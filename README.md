@@ -6,7 +6,7 @@ MapProj is a free, self-hosted tool for facilities, maintenance, and technology 
 
 ## What you can do
 
-[![Watch the MapProj walkthrough](logo.png)](https://youtu.be/-dAHxD8eRYA)
+<a href="https://youtu.be/-dAHxD8eRYA"><img src="logo.png" alt="Watch the MapProj walkthrough" width="240"></a>
 
 **[Watch the walkthrough on YouTube](https://youtu.be/-dAHxD8eRYA)** — logo setup, building creation, room calibration, legends, and users. See [the tutorial guide](Videos/README.md) for the individual recordings.
 
