@@ -2,7 +2,7 @@
 
 ## 1. Upload the demo building
 
-Start MapProj using the README instructions and sign in as `admin` with the password printed on first startup. If you explicitly enabled demo mode before first startup, use `admin123`.
+Start MapProj using the README instructions. On a fresh install, sign in with `admin` / `admin123`, then follow the README steps to create your own administrator and delete the starter account.
 
 Click **+ Add Building**, name it **Demo Center**, and upload [`demo-floor-plan.png`](../examples/demo-floor-plan.png). Select the building if it is not selected automatically.
 

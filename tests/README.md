@@ -9,7 +9,7 @@ python tests/smoke.py
 
 These tests create temporary app copies; they do not modify your saved buildings or accounts.
 
-Security checks cover CSRF rejection, random default passwords, explicit demo setup, admin-only calibration, maintenance/technology status updates, viewer restrictions, and preservation of room geometry. The test client simulates the page token for ordinary requests; negative tests explicitly omit or replace it.
+Checks cover CSRF rejection, the single starter admin, replacing and deleting that account, admin-only calibration, maintenance/technology status updates, viewer restrictions, and preservation of room geometry. The test client simulates the page token for ordinary requests; negative tests explicitly omit or replace it.
 
 The browser checks use Node.js and Playwright as optional development tools:
 

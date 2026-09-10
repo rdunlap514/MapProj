@@ -75,7 +75,7 @@ def save_legend(building_name, legend):
 
 # Account names are friendly labels; role values are what permission checks use.
 # The maintenance account uses the internal role user; viewer uses readonly.
-STARTER_ROLES = {'admin': 'admin', 'maintenance': 'user', 'technology': 'technology', 'viewer': 'readonly'}
+STARTER_ROLES = {'admin': 'admin'}
 
 # Load the current account records, including password hashes and session tokens.
 def load_users():
@@ -95,16 +95,15 @@ def save_users(users):
         json.dump(users, f, indent=2)
     generate_users_list(users)
 
-# Public demo passwords require an explicit opt-in; ordinary installs get random passwords.
-# This setting only affects first-time setup, never overwrites existing accounts.
+# Create one bootstrap admin on first-time setup; never overwrite existing accounts.
+# Replace this publicly documented account with a personal admin before shared use.
 # A password hash lets us verify a password without storing the original password.
 def initialize_users():
     if not os.path.exists(USERS_FILE):
         users = {}
-        demo = os.environ.get('MAPPROJ_DEMO_MODE') == '1'
-        print('MapProj initial accounts (save these passwords; shown only on first startup):')
+        print('MapProj starter account (replace with your own admin before shared use):')
         for username, role in STARTER_ROLES.items():
-            password = username + '123' if demo else secrets.token_urlsafe(18)
+            password = 'admin123'
             users[username] = {
                 'password_hash': generate_password_hash(password),
                 'role': role,

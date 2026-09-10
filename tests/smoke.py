@@ -25,9 +25,13 @@ with tempfile.TemporaryDirectory(prefix='mapproj-test-') as directory:
     for line in output.getvalue().splitlines()[1:]:
         name, password = line.strip().split(': ', 1)
         credentials[name.split()[0]] = password
-    assert set(credentials) == {'admin', 'maintenance', 'technology', 'viewer'}
+    assert credentials == {'admin': 'admin123'}
     assert all('password' not in value and 'password_hash' in value for value in module.USERS.values())
     client = module.app.test_client()
+    assert client.post('/api/login', json={'username': 'admin', 'password': 'admin123'}).status_code == 200
+    for name, role in {'maintenance': 'user', 'technology': 'technology', 'viewer': 'readonly'}.items():
+        credentials[name] = name + '123'
+        assert client.post('/api/user/add', json={'username': name, 'password': credentials[name], 'role': role}).status_code == 200
     for username, password in credentials.items():
         assert client.post('/api/login', json={'username': username, 'password': password}).status_code == 200
         assert client.get('/admin' if username == 'admin' else '/user').status_code == 200

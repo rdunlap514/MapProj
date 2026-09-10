@@ -44,23 +44,22 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-Open http://127.0.0.1:5000. A fresh installation creates administrator, maintenance, technology, and viewer accounts with **random passwords printed once in the terminal**. Save those passwords privately.
+Open http://127.0.0.1:5000. A fresh installation creates **one starter administrator**:
 
-For a disposable local demo, set this before the first startup in PowerShell:
+- **Username:** `admin`
+- **Password:** `admin123`
 
-```powershell
-$env:MAPPROJ_DEMO_MODE = '1'
-python app.py
-```
+### Replace the starter account
 
-On macOS/Linux, use `MAPPROJ_DEMO_MODE=1 python app.py`. This explicitly enables these **public demo accounts**:
+1. Sign in with `admin` / `admin123`.
+2. In **User Management**, click **+ Add User**. Choose your own username and a strong password, and select the **admin** role.
+3. **Log out** of the starter account.
+4. Sign in with your **new administrator account** and confirm you can access User Management.
+5. Delete the original **admin** account from User Management.
 
-- Administrator: `admin` / `admin123`
-- Maintenance: `maintenance` / `maintenance123`
-- Technology: `technology` / `technology123`
-- Read-only: `viewer` / `viewer123`
+Complete these steps before sharing access: the starter password is public. Create maintenance, technology, and viewer accounts as needed; they are not created automatically.
 
-These credentials are for local testing. Change every demo password in the administrator Users panel before shared use. Passwords are stored as hashes and are not included in exports. Existing installations retain their saved accounts: switching off demo mode does not replace passwords already stored.
+Passwords remain stored as hashes in `users.json`, so the file will not display readable passwords. Account exports exclude authentication secrets. Existing installations keep their saved accounts and passwords; updating the code does not reset them. Once you delete the starter admin, restarting the app will not recreate it while `users.json` exists.
 
 A fresh download includes **Building1**, the fictional Demo Center floor plan with eight saved rooms and the customized legend shown in the tutorials. Select it after signing in, or upload another floor plan and define your own rooms. New buildings start with RoomState1, RoomState2, Roomstate3, and Modifier. Building images and setups are included in Git; review any added building data before publishing. Accounts remain excluded. The public version includes the MapProj logo.
 

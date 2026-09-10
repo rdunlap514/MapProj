@@ -37,6 +37,9 @@ class ReleaseRegressions(unittest.TestCase):
         self.module.app.test_client_class = PageClient
         self.client = self.module.app.test_client()
         self.login(self.client, "admin", "admin123")
+        # Additional roles are test fixtures, not accounts shipped with a fresh install.
+        for name, role in {'maintenance': 'user', 'technology': 'technology', 'viewer': 'readonly'}.items():
+            self.assertEqual(self.client.post('/api/user/add', json={'username': name, 'password': name + '123', 'role': role}).status_code, 200)
 
     def login(self, client, username, password):
         self.assertEqual(client.post("/api/login", json={"username": username, "password": password}).status_code, 200)
@@ -125,18 +128,30 @@ class ReleaseRegressions(unittest.TestCase):
         self.assertEqual(self.client.post('/logout').status_code, 302)
         self.assertEqual(self.client.get('/admin').status_code, 302)
 
-    def test_default_install_has_no_public_passwords(self):
+    def test_starter_admin_can_be_replaced_without_reappearing(self):
         self.module.USERS_FILE = str(self.root / 'fresh-users.json')
         output = io.StringIO()
         with patch.dict('os.environ', {'MAPPROJ_DEMO_MODE': '0'}), contextlib.redirect_stdout(output):
             self.module.initialize_users()
         users = self.module.load_users()
-        for name, account in users.items():
-            self.assertFalse(self.module.check_password_hash(account['password_hash'], name + '123'))
-        # The one-time startup output must give the owner working generated credentials.
-        for line in output.getvalue().splitlines()[1:]:
-            label, password = line.strip().split(': ', 1)
-            self.assertTrue(self.module.check_password_hash(users[label.split()[0]]['password_hash'], password))
+        self.assertEqual(set(users), {'admin'})
+        self.assertTrue(self.module.check_password_hash(users['admin']['password_hash'], 'admin123'))
+        self.assertNotIn('password', users['admin'])
+        client = self.module.app.test_client()
+        self.login(client, 'admin', 'admin123')
+        self.assertEqual(client.post('/api/user/add', json={'username':'owner', 'password':'personal-test-password', 'role':'admin'}).status_code, 200)
+        client.post('/logout')
+        self.login(client, 'owner', 'personal-test-password')
+        self.assertEqual(client.get('/api/users').status_code, 200)
+        self.assertEqual(client.post('/api/user/admin/delete').status_code, 200)
+        before = self.module.load_users()
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.module.initialize_users()
+        self.assertEqual(self.module.load_users(), before)
+        self.assertEqual(set(before), {'owner'})
+        client.post('/logout')
+        self.assertEqual(client.post('/api/login', json={'username':'admin','password':'admin123'}).status_code, 401)
+        self.login(client, 'owner', 'personal-test-password')
 
 
 if __name__ == "__main__":
