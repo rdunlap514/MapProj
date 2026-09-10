@@ -1,0 +1,29 @@
+# Local accounts and configuration (building setups are included in the release)
+/users.json
+/users_list.txt
+# Private release preparation and learning notes
+/docs/SECURITY_CHANGES.md
+/docs/release/
+.env
+.env.*
+!.env.example
+# Archived prototypes and conversations
+/temp/
+/MapProj.txt
+/MapProj2.txt
+# Local development files
+.venv/
+.idea/
+.vscode/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+*.log
+
+# Local release verification environment
+.release-test-env/
+
+node_modules/

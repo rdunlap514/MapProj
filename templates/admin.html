@@ -1,0 +1,2927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include '_security.html' %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapProj - Building Room Status Map</title>
+    <link rel="icon" type="image/png" href="/api/logo">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #e8e8e8;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 380px;
+            background: linear-gradient(180deg, #141414 0%, #1f1f1f 100%);
+            border-right: 3px solid #D4553F;
+            overflow-y: auto;
+            padding: 28px;
+            box-shadow: 4px 0 24px rgba(212, 85, 63, 0.15);
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0f0f1e;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #141414 0%, #1f1f1f 100%);
+            padding: 12px 32px;
+            border-bottom: 3px solid #D4553F;
+            box-shadow: 0 4px 20px rgba(212, 85, 63, 0.12);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            height: 50px;
+            flex-shrink: 0;
+        }
+
+        .logo-container img {
+            max-height: 50px;
+            max-width: 200px;
+            object-fit: contain;
+        }
+
+        .logo-placeholder {
+            height: 50px;
+            width: 50px;
+            background: rgba(212, 85, 63, 0.1);
+            border: 2px solid #D4553F;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #D4553F;
+            font-size: 24px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 1;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 0;
+            background: linear-gradient(135deg, #D4553F, #E8A830);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls span {
+            color: #d0d0d0;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 11px 20px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.25s ease;
+            border: 1px solid transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #D4553F, #E8A830);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(212, 85, 63, 0.35);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #242424;
+            color: #e8e8e8;
+            border: 1.5px solid #3a3a3a;
+        }
+
+        .btn-secondary:hover {
+            background: #2d2d2d;
+            border-color: #D4553F;
+            box-shadow: 0 4px 12px rgba(212, 85, 63, 0.2);
+        }
+
+        .btn-danger {
+            background: #A53E2F;
+            color: white;
+            border: 1px solid #A53E2F;
+        }
+
+        .btn-danger:hover {
+            background: #8B3220;
+            border-color: #8B3220;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(165, 62, 47, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #E8A830, #F4B860);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(232, 168, 48, 0.35);
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow: auto;
+            position: relative;
+        }
+
+        canvas {
+            background: white;
+            border: 3px solid #ff4444;
+            border-radius: 8px;
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 8px 32px rgba(255, 68, 68, 0.3);
+        }
+
+        .sidebar h2 {
+            font-size: 12px;
+            margin-bottom: 16px;
+            margin-top: 4px;
+            color: #E8A830;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 700;
+            opacity: 0.95;
+        }
+
+        .sidebar h3 {
+            font-size: 13px;
+            margin-bottom: 12px;
+            color: #D4553F;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section {
+            margin-bottom: 28px;
+            padding-bottom: 28px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .collapsible-content {
+            max-height: none;
+            overflow: visible;
+            transition: max-height 0.3s ease;
+        }
+
+        .collapsible-content.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid #3d4571;
+            color: #ffd60a;
+            cursor: pointer;
+            border-radius: 4px;
+            padding: 4px 8px;
+            transition: all 0.2s ease;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .btn-icon:hover {
+            border-color: #D4553F;
+            color: #D4553F;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        input[type="file"],
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1.5px solid #2a2a2a;
+            border-radius: 7px;
+            background: #171717;
+            color: #e8e8e8;
+            margin: 8px 0;
+            font-size: 13px;
+            transition: all 0.25s ease;
+        }
+
+        input[type="file"]:focus,
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #D4553F;
+            background: #1a1a1a;
+            box-shadow: 0 0 14px rgba(212, 85, 63, 0.25);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #ff4444;
+        }
+
+        .building-selector {
+            background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
+            border: 1.5px solid #D4553F;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .building-selector h3 {
+            margin-bottom: 8px;
+        }
+
+        .building-selector select {
+            margin: 6px 0;
+        }
+
+        .building-selector button {
+            width: 100%;
+            margin-top: 6px;
+            padding: 8px;
+        }
+
+        .building-selector button:nth-child(3) {
+            margin-top: 3px;
+        }
+
+        .room-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .room-item {
+            background: #1a1a1a;
+            border: 2px solid #444;
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            text-align: center;
+            min-height: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .room-item:hover {
+            background: #222;
+            border-color: #ff4444;
+            transform: translateY(-2px);
+        }
+
+        .room-item.selected {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            box-shadow: 0 0 12px rgba(255, 68, 68, 0.3);
+        }
+
+        .room-number {
+            font-weight: 700;
+            font-size: 16px;
+            color: #ffd60a;
+            margin-bottom: 4px;
+        }
+
+        .room-status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-top: 4px;
+        }
+
+        .room-item button {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            padding: 3px 6px;
+            font-size: 10px;
+            background: #ff4444;
+            color: #000;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .room-item:hover button {
+            opacity: 1;
+        }
+
+        .color-buttons {
+            display: none;
+        }
+
+        .color-btn {
+            flex: 1;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+        }
+
+        .color-btn.red { background: #ff4757; color: white; }
+        .color-btn.yellow { background: #ffc107; color: #333; }
+        .color-btn.green { background: #2ecc71; color: white; }
+        .color-btn.white { background: #3d4571; color: #e0e0e0; border: 1px solid #4d5581; }
+
+        .legend {
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #d0d0d0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 10px;
+            border: 1px solid #666;
+        }
+
+        .calibration-panel {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .calibration-panel.active {
+            display: block;
+            background: rgba(255, 68, 68, 0.05);
+            border-color: #ff4444;
+        }
+
+        .calibration-panel h3 {
+            color: #ff4444;
+            margin-bottom: 8px;
+        }
+
+        .calibration-panel p {
+            font-size: 12px;
+            color: #d0d0d0;
+            margin-bottom: 6px;
+        }
+
+        #newBuildingDialog,
+        #editRoomDialog,
+        #addUserDialog,
+        #duplicateDialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        #newBuildingDialog > div,
+        #newBuildingDialog > div {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border: 2px solid #ff4444;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(255, 68, 68, 0.2);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #newBuildingDialog h2 {
+            margin-bottom: 20px;
+            font-size: 20px;
+            color: #ff4444;
+        }
+
+        #editRoomDialog {
+            display: none !important;
+        }
+
+        .edit-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(26, 26, 26, 0.95);
+            border: 2px solid #ff4444;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .edit-overlay h3 {
+            color: #ff4444;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .edit-overlay input {
+            width: 100%;
+            padding: 8px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border: 1px solid #3d4571;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #f0f0f0;
+            font-size: 12px;
+        }
+
+        .edit-info {
+            font-size: 11px;
+            color: #d0d0d0;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .edit-buttons-overlay {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .edit-buttons-overlay button {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+
+        .toggle-btn {
+            padding: 10px 16px;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, #ff4444, #ff8c00);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="newBuildingDialog">
+        <div>
+            <h2>📍 New Building</h2>
+            <div class="edit-group">
+                <label>Building Name</label>
+                <input type="text" id="newBuildingName" placeholder="Building name">
+            </div>
+            <div class="edit-group">
+                <label>Floor Plan Image</label>
+                <input type="file" id="newBuildingImage" accept="image/*">
+            </div>
+            <div class="edit-buttons">
+                <button class="btn-secondary" onclick="closeNewBuildingDialog()">Cancel</button>
+                <button class="btn-primary" onclick="createNewBuilding()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="colorPopover" style="display: none; position: absolute; background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%); border: 2px solid #D4553F; border-radius: 8px; padding: 12px; z-index: 100; box-shadow: 0 8px 24px rgba(212, 85, 63, 0.3); backdrop-filter: blur(10px); max-width: 380px;">
+        <div style="font-size: 12px; font-weight: bold; color: #D4553F; margin-bottom: 10px;" id="colorPopoverRoom"></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;" id="colorButtonsContainer"></div>
+        <button id="leftConnectedBtn" style="width: 100%; padding: 8px; background: #0066ff; color: white; border: 2px solid #0066ff; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s;" onclick="toggleLeftConnected()">🔵 Modifier</button>
+        <div id="notesSection" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #444;"></div>
+    </div>
+
+    <div id="editRoomDialog">
+        <div>
+            <h2>✏️ Edit Room</h2>
+            <div class="edit-group">
+                <label>Room Number</label>
+                <input type="text" id="editRoomId" placeholder="101">
+            </div>
+            <div class="edit-group">
+                <label>Position X</label>
+                <input type="number" id="editRoomX" min="0">
+            </div>
+            <div class="edit-group">
+                <label>Position Y</label>
+                <input type="number" id="editRoomY" min="0">
+            </div>
+            <div class="edit-group">
+                <label>Width</label>
+                <input type="number" id="editRoomW" min="20">
+            </div>
+            <div class="edit-group">
+                <label>Height</label>
+                <input type="number" id="editRoomH" min="20">
+            </div>
+            <div class="edit-group">
+                <label>Angle (degrees)</label>
+                <div class="slider-group">
+                    <input type="range" id="editRoomAngle" min="0" max="360" value="0">
+                    <span id="editAngleDisplay">0°</span>
+                </div>
+            </div>
+            <div class="edit-buttons">
+                <button class="btn-primary" onclick="saveEditedRoom()">Save</button>
+                <button class="btn-secondary" onclick="closeEditRoom()">Cancel</button>
+            </div>
+            <button class="btn-danger" onclick="deleteEditedRoom()">Delete Room</button>
+        </div>
+    </div>
+
+    <div id="duplicateDialog">
+        <div>
+            <h2>📋 Duplicate Building</h2>
+            <div class="edit-group">
+                <label>New Building Name</label>
+                <input type="text" id="duplicateName" placeholder="e.g., Floor 2">
+            </div>
+            <p style="font-size: 12px; color: #999; margin-bottom: 16px;">This will copy the floor plan and room configuration.</p>
+            <div class="edit-buttons">
+                <button class="btn-secondary" onclick="closeDuplicateDialog()">Cancel</button>
+                <button class="btn-primary" onclick="duplicateCurrentBuilding()">Create Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addUserDialog">
+        <div>
+            <h2>➕ Add User</h2>
+            <div class="edit-group">
+                <label>Username</label>
+                <input type="text" id="addUsername" placeholder="john_doe">
+            </div>
+            <div class="edit-group">
+                <label>Password</label>
+                <input type="text" id="addPassword" placeholder="Enter password" autocomplete="new-password" spellcheck="false" autocapitalize="none">
+            </div>
+            <div class="edit-group">
+                <label>Role</label>
+                <select id="addRole" style="width: 100%; padding: 10px 12px; border: 1px solid #444; border-radius: 6px; background: #1a1a1a; color: #f0f0f0;">
+                    <option value="user">User (Maintenance)</option>
+                    <option value="technology">Technology</option>
+                    <option value="admin">Admin</option>
+                    <option value="readonly">Read-only</option>
+                </select>
+            </div>
+            <div class="edit-buttons">
+                <button class="btn-secondary" onclick="closeAddUserDialog()">Cancel</button>
+                <button class="btn-primary" onclick="addNewUser()">Create User</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="welcomeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(6px);">
+        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #222 100%); border: 2px solid #D4553F; border-radius: 12px; padding: 40px; max-width: 520px; box-shadow: 0 20px 60px rgba(212, 85, 63, 0.2);">
+            <h2 style="font-size: 28px; margin-bottom: 16px; background: linear-gradient(135deg, #D4553F, #E8A830); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;">Admin Panel</h2>
+            <p style="color: #d0d0d0; font-size: 14px; line-height: 1.7; margin-bottom: 20px;">Full control over buildings, rooms, and team management.</p>
+
+            <div style="background: #0f0f0f; border-left: 3px solid #E8A830; padding: 14px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="color: #e8a830; font-weight: 600; font-size: 13px; margin-bottom: 8px;">Your Capabilities:</p>
+                <ul style="color: #c0c0c0; font-size: 13px; line-height: 1.8; margin-left: 20px;">
+                    <li><strong>Buildings</strong> — Upload, duplicate, or delete floor plans</li>
+                    <li><strong>Calibration</strong> — Define room boundaries with polygon nodes</li>
+                    <li><strong>Room Numbers</strong> — Toggle display per room or bulk toggle selected rooms</li>
+                    <li><strong>Legend</strong> — Customize status colors and labels per building</li>
+                    <li><strong>Bulk Operations</strong> — Ctrl+click to select multiple rooms, delete or modify together</li>
+                    <li><strong>Users</strong> — Create users, change roles & passwords</li>
+                    <li><strong>Notes</strong> — View and resolve room notes from team members</li>
+                </ul>
+            </div>
+
+            <div style="background: #0f0f0f; border-left: 3px solid #D4553F; padding: 14px; border-radius: 6px; margin-bottom: 24px;">
+                <p style="color: #d4553f; font-weight: 600; font-size: 13px; margin-bottom: 8px;">💡 Pro Tips:</p>
+                <ul style="color: #c0c0c0; font-size: 13px; line-height: 1.8; margin-left: 20px;">
+                    <li><strong>Ctrl+Click</strong> room names in sidebar to select multiple for bulk ops</li>
+                    <li>Click rooms on map to change color—use sidebar for group operations</li>
+                    <li>Selected rooms show popup menu with Toggle Numbers & Delete buttons</li>
+                    <li>Scroll wheel to zoom, middle-click to pan maps</li>
+                    <li>Use calibration mode to define room shapes with polygon nodes</li>
+                </ul>
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 16px; padding: 10px; background: #0a0a0a; border-radius: 6px;">
+                <input type="checkbox" id="disableWelcomeCheckbox" style="cursor: pointer; width: 16px; height: 16px;">
+                <label for="disableWelcomeCheckbox" style="color: #999; font-size: 12px; cursor: pointer; flex: 1; margin: 0;">Don't show this again</label>
+            </div>
+
+            <button class="btn-primary" onclick="closeWelcomeModal()" style="width: 100%; padding: 14px;">Got It, Let's Go</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h1 style="font-size: 22px; margin-bottom: 24px; background: linear-gradient(135deg, #D4553F, #E8A830); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; letter-spacing: -0.3px;">MapProj</h1>
+
+            <div class="section building-selector">
+                <h3>🏢 Select Building</h3>
+                <select id="buildingSelect" onchange="loadSelectedBuilding()">
+                    <option value="">Choose a building...</option>
+                </select>
+                <button class="btn-primary" style="width: 100%; margin-top: 8px;" onclick="showNewBuildingDialog()">+ Add Building</button>
+                <div style="display: flex; gap: 8px; margin-top: 6px;">
+                    <button class="btn-secondary" id="duplicateBuilding" style="flex: 1;" onclick="showDuplicateDialog()" disabled>📋 Duplicate</button>
+                    <button class="btn-danger" id="deleteBuilding" style="flex: 1;" onclick="deleteCurrentBuilding()" disabled>Delete</button>
+                </div>
+            </div>
+
+            <div class="calibration-panel" id="calibrationPanel">
+                <div id="manualCalibrationSection">
+                    <h3>📍 Manual Calibration</h3>
+                    <p>Click to place nodes, then complete.</p>
+                    <input type="text" id="roomNumberInput" placeholder="Room number (e.g., 101)" maxlength="10">
+                    <div style="text-align: center; font-size: 12px; color: #ffd60a; margin: 8px 0; font-weight: bold;">Nodes: <span id="nodeCount">0</span></div>
+                    <label style="font-size: 12px; color: #bbb; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+                        <input type="checkbox" id="showRoomNumberCheckbox" checked style="cursor: pointer;">
+                        Show room number
+                    </label>
+                    <button class="btn-success" style="width: 100%; margin-bottom: 8px;" onclick="saveCurrentRoom()" id="saveRoomBtn" disabled>Save Room</button>
+                    <button class="btn-primary" style="width: 100%; margin-bottom: 8px;" onclick="completePolygon()" id="completePolyBtn" disabled>✓ Complete Polygon</button>
+                    <button class="btn-secondary" style="width: 100%; margin-bottom: 8px;" onclick="clearDrawing()">Clear</button>
+                    <button class="btn-secondary" style="width: 100%;" onclick="toggleCalibration()">Exit</button>
+                </div>
+
+            </div>
+
+            <!-- Collapsible Rooms Section -->
+            <div class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2>📋 Rooms</h2>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn-icon" onclick="toggleSection('roomsSection')" style="padding: 4px 8px; font-size: 14px;">▼</button>
+                        <button class="btn-icon" onclick="popoutSection('roomsSection')" style="padding: 4px 8px; font-size: 14px;">⇗</button>
+                    </div>
+                </div>
+                <div id="roomsSection" class="collapsible-content">
+                    <div style="margin-bottom: 10px;">
+                        <button id="calibrationToggle" class="toggle-btn btn-secondary" onclick="toggleCalibration()" style="width: 100%;">Enter Calibration</button>
+                    </div>
+                    <div id="bulkOperationsPanel" style="display: none; margin-bottom: 12px; padding: 12px; background: rgba(255, 68, 68, 0.1); border-radius: 6px; border: 1px solid #D4553F;">
+                        <div style="font-size: 12px; color: #ffd60a; margin-bottom: 8px;">Selected: <span id="selectedCount">0</span> rooms</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                            <button class="btn-primary" style="font-size: 12px; padding: 6px;" onclick="bulkToggleShowNumber()">Toggle Numbers</button>
+                            <button class="btn-danger" style="font-size: 12px; padding: 6px;" onclick="bulkDeleteSelected()">Delete Selected</button>
+                        </div>
+                    </div>
+                    <div id="roomList" class="room-list"></div>
+                    <button class="btn-secondary" style="width: 100%; margin-top: 8px;" onclick="resetAllStatuses()">Reset Statuses</button>
+                </div>
+            </div>
+
+            <!-- Collapsible Legend Display Section -->
+            <div class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2>Status Legend</h2>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn-secondary" onclick="popoutSection('legendEditorSection')" style="padding: 4px 8px; font-size: 12px;">Edit legend</button>
+                        <button class="btn-icon" onclick="toggleSection('legendDisplaySection')" style="padding: 4px 8px; font-size: 14px;">▼</button>
+                        <button class="btn-icon" onclick="popoutSection('legendDisplaySection')" style="padding: 4px 8px; font-size: 14px;">⇗</button>
+                    </div>
+                </div>
+                <div id="legendDisplaySection" class="collapsible-content">
+                    <div class="legend" id="legendDisplay"></div>
+                </div>
+            </div>
+
+            <!-- Collapsible User Management Section -->
+            <div class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2>👥 User Management</h2>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn-icon" onclick="toggleSection('userSection')" style="padding: 4px 8px; font-size: 14px;">▼</button>
+                        <button class="btn-icon" onclick="popoutSection('userSection')" style="padding: 4px 8px; font-size: 14px;">⇗</button>
+                    </div>
+                </div>
+                <div id="userSection" class="collapsible-content">
+                    <button class="btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="showAddUserDialog()">+ Add User</button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;">
+                        <button class="btn-secondary" style="font-size: 11px; padding: 8px;" onclick="exportUsersText()">📄 Export (TXT)</button>
+                        <button class="btn-secondary" style="font-size: 11px; padding: 8px;" onclick="exportUsersJson()">📋 Export (JSON)</button>
+                    </div>
+                    <div id="userList" style="background: #0a0a0a; border: 1px solid #444; border-radius: 6px; padding: 8px; font-size: 12px;"></div>
+                </div>
+            </div>
+
+            <!-- Collapsible Legend Editor Section -->
+            <div class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2>🎨 Legend Editor</h2>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn-icon" onclick="toggleSection('legendEditorSection')" style="padding: 4px 8px; font-size: 14px;">▼</button>
+                        <button class="btn-icon" onclick="popoutSection('legendEditorSection')" style="padding: 4px 8px; font-size: 14px;">⇗</button>
+                    </div>
+                </div>
+                <div id="legendEditorSection" class="collapsible-content">
+                    <div id="legendEditor" style="background: #0a0a0a; border: 1px solid #444; border-radius: 6px; padding: 8px; margin-bottom: 10px; font-size: 12px;"></div>
+                    <button class="btn-primary" style="width: 100%;" onclick="saveLegend()">💾 Save Legend</button>
+                </div>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; margin-top: 16px;" onclick="saveAllChanges()">💾 Save All Changes</button>
+        </div>
+
+        <div class="main">
+            <div class="header">
+                <div class="logo-container" id="logoContainer">
+                    <div class="logo-placeholder">🗺️</div>
+                </div>
+                <div class="header-content">
+                    <h1>MapProj</h1>
+                    <div class="controls">
+                        <span id="headerStatus">Select a building to begin</span>
+                        <button class="btn-secondary" onclick="logout()" style="margin-left: auto;">Logout</button>
+                    </div>
+                </div>
+            </div>
+            <div class="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Encode user content before including it in an HTML template.
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[char]));
+        }
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let backgroundImage = null;
+        let selectedRoom = null;
+        let selectedRooms = new Set(); // For multi-select with Ctrl+click
+        let currentBuilding = null;
+        // roomBounds maps room IDs to geometry/status. Updating this object alone does not update disk.
+        let roomBounds = {};
+        let drawingPolygon = null;
+        let isDrawing = false;
+        let startX, startY;
+        let calibrationMode = false;
+        let editMode = false;
+        let editingRoom = null;
+        let dragHandle = null;
+        // Each tracing click adds an {x, y} corner in image coordinates; three or more corners form a room.
+        let polygonNodes = [];
+
+        // Zoom and pan change the view, not the saved coordinates on the original floor-plan image.
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let lastPanX = 0;
+        let lastPanY = 0;
+        let dragNodeIndex = -1;
+
+       canvas.addEventListener("wheel", function(e) {
+           e.preventDefault();
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseCanvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const mouseCanvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Calculate mouse position in world space (before zoom)
+            const mouseWorldX = (mouseCanvasX - panX) / zoom;
+            const mouseWorldY = (mouseCanvasY - panY) / zoom;
+
+            // Update zoom
+            if (e.deltaY < 0) {
+                zoom *= 1.1;
+            } else {
+                zoom /= 1.1;
+            }
+
+            zoom = Math.max(0.25, Math.min(zoom, 8));
+
+            // Adjust pan so mouse stays at same world position
+            panX = mouseCanvasX - mouseWorldX * zoom;
+            panY = mouseCanvasY - mouseWorldY * zoom;
+
+            redraw();
+        }, { passive: false });
+
+       canvas.addEventListener("mousedown", function(e) {
+         if (e.button === 1) { // Middle mouse
+            e.preventDefault();
+            isPanning = true;
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+            }
+        });
+
+        canvas.addEventListener("mousemove", function(e) {
+            if (!isPanning) return;
+
+             panX += e.clientX - lastPanX;
+             panY += e.clientY - lastPanY;
+
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+
+            redraw();
+            });
+
+
+        window.addEventListener("mouseup", function() {
+            isPanning = false;
+        });
+
+        canvas.addEventListener("auxclick", function(e) {
+                if (e.button === 1) {
+                    e.preventDefault();
+                    }
+            });
+
+
+        // Fill the building selector from the server; the selector is only a view of saved folders.
+        async function loadBuildings() {
+            try {
+                const response = await fetch('/api/buildings');
+                const data = await response.json();
+                const select = document.getElementById('buildingSelect');
+
+                select.innerHTML = '<option value="">Choose a building...</option>';
+                data.buildings.forEach(building => {
+                    const option = document.createElement('option');
+                    option.value = building;
+                    option.textContent = building;
+                    select.appendChild(option);
+                });
+            } catch (e) {
+                console.error('Failed to load buildings:', e);
+            }
+        }
+
+        // Load the image and room geometry for the selected building, then repaint the canvas.
+        async function loadSelectedBuilding() {
+            const building = document.getElementById('buildingSelect').value;
+            if (!building) {
+                currentBuilding = null;
+                backgroundImage = null;
+                roomBounds = {};
+                selectedRoom = null;
+                selectedRooms.clear();
+                updateBulkPanel();
+                redraw();
+                return;
+            }
+
+            currentBuilding = building;
+            document.getElementById('deleteBuilding').disabled = false;
+            document.getElementById('duplicateBuilding').disabled = false;
+
+            try {
+                const [imageRes, calibRes] = await Promise.all([
+                    fetch(`/api/building/${encodeURIComponent(building)}/image`),
+                    fetch(`/api/building/${encodeURIComponent(building)}/calibration`)
+                ]);
+
+                if (imageRes.ok) {
+                    const blob = await imageRes.blob();
+                    const url = URL.createObjectURL(blob);
+                    const img = new Image();
+                    img.onload = () => {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        backgroundImage = img;
+                        redraw();
+                    };
+                    img.src = url;
+                }
+
+                if (calibRes.ok) {
+                    roomBounds = await calibRes.json();
+                    convertRectanglesToPolygons();
+                }
+
+                await loadLegend();
+                renderRoomList();
+                redraw();
+            } catch (e) {
+                console.error('Failed to load building:', e);
+            }
+        }
+
+        function showNewBuildingDialog() {
+            document.getElementById('newBuildingDialog').style.display = 'flex';
+            document.getElementById('newBuildingName').focus();
+        }
+
+        function closeNewBuildingDialog() {
+            document.getElementById('newBuildingDialog').style.display = 'none';
+            document.getElementById('newBuildingName').value = '';
+            document.getElementById('newBuildingImage').value = '';
+        }
+
+        // FormData sends the building name and image together; JSON cannot directly carry a file object.
+        async function createNewBuilding() {
+            const name = document.getElementById('newBuildingName').value.trim();
+            const imageInput = document.getElementById('newBuildingImage');
+
+            if (!name) {
+                alert('Please enter a building name');
+                return;
+            }
+
+            if (!imageInput.files[0]) {
+                alert('Please select an image');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('name', name);
+                formData.append('image', imageInput.files[0]);
+
+                const response = await fetch('/api/building/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Upload failed');
+
+                closeNewBuildingDialog();
+                await loadBuildings();
+                document.getElementById('buildingSelect').value = name;
+                await loadSelectedBuilding();
+                alert(`Created: ${name}`);
+            } catch (e) {
+                console.error('Failed to create building:', e);
+                alert('Failed: ' + e.message);
+            }
+        }
+
+        // Ask for confirmation before requesting removal of the entire selected building.
+        async function deleteCurrentBuilding() {
+            if (!currentBuilding) return;
+            if (!confirm(`Delete "${currentBuilding}"?`)) return;
+
+            try {
+                const response = await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/delete`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('Delete failed');
+
+                currentBuilding = null;
+                backgroundImage = null;
+                roomBounds = {};
+                selectedRoom = null;
+                await loadBuildings();
+                document.getElementById('buildingSelect').value = '';
+                document.getElementById('deleteBuilding').disabled = true;
+                redraw();
+                alert('Deleted');
+            } catch (e) {
+                console.error('Failed to delete building:', e);
+                alert('Failed: ' + e.message);
+            }
+        }
+
+        function showDuplicateDialog() {
+            if (!currentBuilding) return;
+            document.getElementById('duplicateDialog').style.display = 'flex';
+            document.getElementById('duplicateName').focus();
+        }
+
+        function closeDuplicateDialog() {
+            document.getElementById('duplicateDialog').style.display = 'none';
+            document.getElementById('duplicateName').value = '';
+        }
+
+        // Request a server-side folder copy with a new name, then refresh the building selector.
+        async function duplicateCurrentBuilding() {
+            if (!currentBuilding) return;
+
+            const newName = document.getElementById('duplicateName').value.trim();
+            if (!newName) {
+                alert('Please enter a new building name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/duplicate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_name: newName })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                    return;
+                }
+
+                closeDuplicateDialog();
+                await loadBuildings();
+                document.getElementById('buildingSelect').value = newName;
+                await loadSelectedBuilding();
+                alert(`✓ Created "${newName}"`);
+            } catch (e) {
+                console.error('Failed to duplicate building:', e);
+                alert('Failed: ' + e.message);
+            }
+        }
+
+        // Build the sidebar from roomBounds, the browser's in-memory copy of the saved room map.
+        function renderRoomList() {
+            const roomList = document.getElementById('roomList');
+            roomList.innerHTML = '';
+
+            const roomIds = Object.keys(roomBounds).sort((a, b) => {
+                const numA = parseInt(a);
+                const numB = parseInt(b);
+                return (isNaN(numA) ? 999 : numA) - (isNaN(numB) ? 999 : numB);
+            });
+
+            if (roomIds.length === 0) {
+                roomList.innerHTML = '<div style="grid-column: 1/-1; color: #d0d0d0; text-align: center; font-size: 12px; padding: 20px;">No rooms</div>';
+                return;
+            }
+
+            roomIds.forEach(roomId => {
+                const div = document.createElement('div');
+                const isSelected = selectedRoom === roomId || selectedRooms.has(roomId);
+                div.className = 'room-item' + (isSelected ? ' selected' : '');
+                div.innerHTML = `
+                    <div class="room-number">${roomId}</div>
+                    <button onclick="editRoom('${roomId}'); event.stopPropagation();">Edit</button>
+                `;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    if (e.ctrlKey) {
+                        // Group selection owns the highlight; discard the previous single selection.
+                        selectedRoom = null;
+                        if (selectedRooms.has(roomId)) {
+                            selectedRooms.delete(roomId);
+                        } else {
+                            selectedRooms.add(roomId);
+                        }
+                        updateBulkPanel();
+                        renderRoomList();
+                        redraw();
+                    } else {
+                        // Regular click to select single room - clears multi-select
+                        selectedRooms.clear();
+                        selectRoom(roomId);
+                        updateBulkPanel();
+                        redraw();
+                    }
+                };
+                roomList.appendChild(div);
+            });
+        }
+
+        function selectRoom(roomId) {
+            selectedRoom = roomId;
+            renderRoomList();
+            redraw();
+        }
+
+        // Find a room's bounding box so controls can work with both polygons and older rectangles.
+        function getRoomBounds(room) {
+            if (room.nodes && room.nodes.length > 0) {
+                // Calculate bounding box from polygon nodes
+                const xs = room.nodes.map(n => n[0]);
+                const ys = room.nodes.map(n => n[1]);
+                const minX = Math.min(...xs);
+                const minY = Math.min(...ys);
+                const maxX = Math.max(...xs);
+                const maxY = Math.max(...ys);
+                return {
+                    x: minX,
+                    y: minY,
+                    w: maxX - minX,
+                    h: maxY - minY
+                };
+            }
+            // Rectangle format fallback
+            return {
+                x: room.x || 0,
+                y: room.y || 0,
+                w: room.w || 0,
+                h: room.h || 0
+            };
+        }
+
+        // Convert older rectangle geometry into corner points while accounting for rotation.
+        function convertRectanglesToPolygons() {
+            let hasConverted = false;
+            const roomIds = Object.keys(roomBounds);
+
+            roomIds.forEach(roomId => {
+                const room = roomBounds[roomId];
+
+                // If room is in rectangle format (has x, y, w, h but no nodes)
+                if ((room.x !== undefined || room.y !== undefined) && !room.nodes) {
+                    const x = room.x || 0;
+                    const y = room.y || 0;
+                    const w = room.w || 100;
+                    const h = room.h || 100;
+
+                    // Convert to polygon with 4 corner nodes
+                    room.nodes = [
+                        { x: x, y: y },
+                        { x: x + w, y: y },
+                        { x: x + w, y: y + h },
+                        { x: x, y: y + h }
+                    ];
+
+                    // Keep other properties
+                    room.angle = room.angle || 0;
+                    if (!room.color) room.color = 'white';
+
+                    // Remove old rectangle properties
+                    delete room.x;
+                    delete room.y;
+                    delete room.w;
+                    delete room.h;
+
+                    hasConverted = true;
+                }
+            });
+
+            // Save if we converted any
+            if (hasConverted && currentBuilding) {
+                fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(roomBounds)
+                }).catch(e => console.log('Rooms converted to polygon format'));
+            }
+
+            return hasConverted;
+        }
+
+        let colorPopoverRoom = null;
+
+        // Open the room-specific controls and load its notes; selecting a room is not itself a save.
+        async function showColorPopover(roomId, x, y) {
+            if (!roomBounds[roomId]) return;
+
+            colorPopoverRoom = roomId;
+            const popover = document.getElementById('colorPopover');
+            document.getElementById('colorPopoverRoom').textContent = `Room ${roomId}`;
+
+            // Generate color buttons from legend
+            const container = document.getElementById('colorButtonsContainer');
+            container.innerHTML = Object.entries(currentLegend).map(([key, item]) => {
+                if (key === 'modifier') return ''; // Skip modifier, it has its own button
+                return `<button class="btn-secondary" style="padding: 8px; font-size: 12px; text-align: left; border-left: 4px solid ${item.color};" onclick="setColorFromPopover('${key}')">${item.label}</button>`;
+            }).join('');
+
+            // Load notes for this room
+            await loadAdminNotes(roomId);
+
+            const rect = document.querySelector('.canvas-container').getBoundingClientRect();
+            popover.style.left = (x - rect.left) + 'px';
+            popover.style.top = (y - rect.top) + 'px';
+            popover.style.display = 'block';
+
+            updateLeftConnectedButton();
+        }
+
+        function hideColorPopover() {
+            document.getElementById('colorPopover').style.display = 'none';
+            colorPopoverRoom = null;
+        }
+
+        async function setColorFromPopover(color) {
+            if (!colorPopoverRoom) return;
+
+            roomBounds[colorPopoverRoom].color = color;
+
+            if (currentBuilding) {
+                try {
+                    await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(roomBounds)
+                    });
+                } catch (e) {
+                    console.error('Failed to save color:', e);
+                }
+            }
+
+            hideColorPopover();
+            renderRoomList();
+            redraw();
+        }
+
+        async function toggleLeftConnected() {
+            if (!colorPopoverRoom) return;
+
+            roomBounds[colorPopoverRoom].leftConnected = !roomBounds[colorPopoverRoom].leftConnected;
+            updateLeftConnectedButton();
+
+            if (currentBuilding) {
+                try {
+                    await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(roomBounds)
+                    });
+                } catch (e) {
+                    console.error('Failed to save:', e);
+                }
+            }
+
+            renderRoomList();
+            redraw();
+        }
+
+        function updateLeftConnectedButton() {
+            const btn = document.getElementById('leftConnectedBtn');
+            if (!btn || !colorPopoverRoom || !roomBounds[colorPopoverRoom]) return;
+
+            const modifier = currentLegend.modifier;
+            if (!modifier || !modifier.enabled) {
+                btn.style.display = 'none';
+                return;
+            }
+
+            btn.style.display = 'block';
+            // Use the editable legend label; textContent keeps custom names as plain text.
+            btn.textContent = modifier.label || 'Modifier';
+            if (roomBounds[colorPopoverRoom].leftConnected) {
+                btn.style.background = '#0044dd';
+                btn.style.borderColor = '#00ffff';
+                btn.style.boxShadow = '0 0 12px rgba(0, 102, 255, 0.5)';
+            } else {
+                btn.style.background = '#0066ff';
+                btn.style.borderColor = '#0066ff';
+                btn.style.boxShadow = 'none';
+            }
+        }
+
+        async function setColor(roomId, color) {
+            if (!roomBounds[roomId]) return;
+
+            roomBounds[roomId].color = color;
+
+            if (currentBuilding) {
+                try {
+                    await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(roomBounds)
+                    });
+                } catch (e) {
+                    console.error('Failed to save color:', e);
+                }
+            }
+
+            renderRoomList();
+            redraw();
+        }
+
+        async function resetAllStatuses() {
+            if (!currentBuilding) {
+                alert('Please select a building first');
+                return;
+            }
+
+            if (!confirm(`Reset all room statuses for "${currentBuilding}"?`)) return;
+
+            // Reset all room colors to white
+            Object.keys(roomBounds).forEach(roomId => {
+                roomBounds[roomId].color = 'white';
+            });
+
+            // Save to backend
+            if (currentBuilding) {
+                try {
+                    await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(roomBounds)
+                    });
+                } catch (e) {
+                    console.error('Failed to reset statuses:', e);
+                }
+            }
+
+            renderRoomList();
+            redraw();
+            alert('✓ Statuses reset for this building');
+        }
+
+        // Send the entire room map. Local changes become persistent only through a server write.
+        async function saveAllChanges() {
+            if (!currentBuilding) {
+                alert('Please select a building first');
+                return;
+            }
+
+            try {
+                await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(roomBounds)
+                });
+
+                alert('✓ All changes saved!');
+            } catch (e) {
+                console.error('Failed to save:', e);
+                alert('Failed to save changes');
+            }
+        }
+
+        // Switch between tracing room outlines and interacting with existing rooms.
+        function toggleCalibration() {
+            if (!calibrationMode && !currentBuilding) {
+                alert('Please select a building first');
+                return;
+            }
+
+            calibrationMode = !calibrationMode;
+            const toggle = document.getElementById('calibrationToggle');
+            const panel = document.getElementById('calibrationPanel');
+
+            if (calibrationMode) {
+                panel.classList.add('active');
+                toggle.classList.add('active');
+                toggle.textContent = 'Exit Calibration';
+                document.getElementById('headerStatus').textContent = 'Calibration Mode: Draw, rotate, name, save rooms';
+                clearDrawing();
+            } else {
+                panel.classList.remove('active');
+                toggle.classList.remove('active');
+                toggle.textContent = 'Enter Calibration';
+                document.getElementById('headerStatus').textContent = 'Select a room to edit status';
+                clearDrawing();
+            }
+            redraw();
+        }
+
+        // Select existing geometry for editing and show its drag controls.
+        function editRoom(roomId) {
+            if (!roomBounds[roomId]) return;
+
+            editMode = true;
+            editingRoom = roomId;
+            selectedRoom = roomId;
+            canvas.style.cursor = 'grab';
+            document.getElementById('headerStatus').textContent = `✏️ Editing Room ${roomId}: Drag corners to resize, center to move, circle to rotate`;
+
+            // Show edit overlay
+            showEditOverlay();
+            redraw();
+        }
+
+        function showEditOverlay() {
+            if (!editingRoom || !roomBounds[editingRoom]) return;
+
+            const room = roomBounds[editingRoom];
+            let posInfo = 'Drag nodes to edit';
+
+            if (room.nodes && room.nodes.length > 0) {
+                posInfo = `${room.nodes.length} corner nodes`;
+            } else if (room.x !== undefined && room.y !== undefined) {
+                posInfo = `X: ${Math.round(room.x)} | Y: ${Math.round(room.y)}`;
+            }
+
+            const showNumber = room.showNumber !== false; // Default to true if not set
+
+            const overlay = document.createElement('div');
+            overlay.id = 'editOverlay';
+            overlay.className = 'edit-overlay';
+            overlay.innerHTML = `
+                <h3>Room ${editingRoom}</h3>
+                <input type="text" id="editRoomNameInput" value="${editingRoom}" placeholder="Room name">
+                <div class="edit-info">
+                    <div>${posInfo}</div>
+                    <div style="margin-top: 10px;">
+                        <label style="font-size: 12px; color: #bbb; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="showNumberCheckbox" ${showNumber ? 'checked' : ''} style="cursor: pointer;">
+                            Show room number
+                        </label>
+                    </div>
+                </div>
+                <div class="edit-buttons-overlay">
+                    <button class="btn-success" onclick="finishEditRoom()" style="flex: 2;">Save</button>
+                    <button class="btn-secondary" onclick="closeEditRoom()">Cancel</button>
+                    <button class="btn-danger" onclick="deleteEditedRoom()">Delete</button>
+                </div>
+            `;
+
+            // Remove old overlay if exists
+            const old = document.getElementById('editOverlay');
+            if (old) old.remove();
+
+            document.querySelector('.canvas-container').appendChild(overlay);
+        }
+
+        function updateEditOverlay() {
+            if (!editingRoom || !roomBounds[editingRoom]) return;
+
+            const room = roomBounds[editingRoom];
+            let posInfo = 'Drag nodes to edit';
+
+            if (room.nodes && room.nodes.length > 0) {
+                posInfo = `${room.nodes.length} corner nodes`;
+            } else if (room.x !== undefined && room.y !== undefined) {
+                posInfo = `X: ${Math.round(room.x)} | Y: ${Math.round(room.y)}`;
+            }
+
+            const info = document.querySelector('.edit-info');
+            if (info) {
+                info.innerHTML = `<div>${posInfo}</div>`;
+            }
+        }
+
+        function closeEditRoom() {
+            editMode = false;
+            editingRoom = null;
+            dragHandle = null;
+            canvas.style.cursor = 'pointer';
+            const overlay = document.getElementById('editOverlay');
+            if (overlay) overlay.remove();
+            document.getElementById('headerStatus').textContent = 'Select a room to edit status';
+            redraw();
+        }
+
+        async function finishEditRoom() {
+            if (!editingRoom) return;
+
+            const newName = document.getElementById('editRoomNameInput')?.value.trim();
+            if (!newName) {
+                alert('Room name cannot be empty');
+                return;
+            }
+
+            const room = roomBounds[editingRoom];
+
+            // Rename if changed
+            if (newName !== editingRoom && roomBounds[newName]) {
+                alert('Room already exists');
+                return;
+            }
+
+            if (newName !== editingRoom) {
+                roomBounds[newName] = room;
+                delete roomBounds[editingRoom];
+                editingRoom = newName;
+                selectedRoom = newName;
+            }
+
+            // Save showNumber preference
+            const showNumberCheckbox = document.getElementById('showNumberCheckbox');
+            if (showNumberCheckbox) {
+                roomBounds[editingRoom].showNumber = showNumberCheckbox.checked;
+            }
+
+            // Save to backend
+            if (currentBuilding) {
+                try {
+                    await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(roomBounds)
+                    });
+                } catch (e) {
+                    console.error('Failed to save:', e);
+                }
+            }
+
+            closeEditRoom();
+            renderRoomList();
+            redraw();
+        }
+
+        async function deleteEditedRoom() {
+            if (!editingRoom) return;
+            if (!confirm(`Delete room ${editingRoom}?`)) return;
+
+            delete roomBounds[editingRoom];
+
+            // Save to backend
+            if (currentBuilding) {
+                try {
+                    await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(roomBounds)
+                    });
+                } catch (e) {
+                    console.error('Failed to save:', e);
+                }
+            }
+
+            closeEditRoom();
+            renderRoomList();
+            redraw();
+        }
+
+        // Discard the unfinished tracing state so the next room starts with no selected points.
+        function clearDrawing() {
+            polygonNodes = [];
+            document.getElementById('nodeCount').textContent = '0';
+            document.getElementById('completePolyBtn').disabled = true;
+            document.getElementById('saveRoomBtn').disabled = true;
+            document.getElementById('roomNumberInput').value = '';
+            drawingPolygon = null;
+            redraw();
+        }
+
+        function rotateRoom(amount) {
+            if (!drawingRect) return;
+            const angleInput = document.getElementById('angleInput');
+            let newAngle = parseInt(angleInput.value) + amount;
+            newAngle = ((newAngle % 360) + 360) % 360;
+            angleInput.value = newAngle;
+            updateAngle();
+        }
+
+        function updateAngle() {
+            if (!drawingRect) return;
+            const angle = parseInt(document.getElementById('angleInput').value);
+            drawingRect.angle = angle;
+            document.getElementById('angleDisplay').textContent = angle + '°';
+            redraw();
+        }
+
+        // Freeze the clicked corner points as a proposed room; saving is a separate step.
+        function completePolygon() {
+            if (polygonNodes.length < 3) {
+                alert('Need at least 3 nodes to create a room');
+                return;
+            }
+            drawingPolygon = [...polygonNodes];
+            document.getElementById('completePolyBtn').disabled = true;
+            document.getElementById('saveRoomBtn').disabled = false;
+            redraw();
+        }
+
+        // Use the typed room number as the key and store its corner points, color, and label preference.
+        async function saveCurrentRoom() {
+            if (!drawingPolygon || drawingPolygon.length < 3) {
+                alert('Please complete a polygon first');
+                return;
+            }
+
+            const roomNumber = document.getElementById('roomNumberInput').value.trim();
+            if (!roomNumber) {
+                alert('Please enter a room number');
+                return;
+            }
+
+            roomBounds[roomNumber] = {
+                nodes: drawingPolygon,
+                color: 'white',
+                showNumber: document.getElementById('showRoomNumberCheckbox').checked
+            };
+
+            if (currentBuilding) {
+                try {
+                    await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(roomBounds)
+                    });
+                } catch (e) {
+                    console.error('Failed to save:', e);
+                }
+            }
+
+            clearDrawing();
+            renderRoomList();
+            redraw();
+            alert(`Saved room ${roomNumber}`);
+        }
+
+        // Group actions stay in the sidebar above the room list.
+        function updateBulkPanel() {
+            const panel = document.getElementById('bulkOperationsPanel');
+            const count = document.getElementById('selectedCount');
+
+            if (selectedRooms.size > 0) {
+                panel.style.display = 'block';
+                count.textContent = selectedRooms.size;
+
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        function clearSelection() {
+            selectedRooms.clear();
+            selectedRoom = null;
+            updateBulkPanel();
+            renderRoomList();
+            redraw();
+        }
+
+        function bulkToggleShowNumber() {
+            selectedRooms.forEach(roomId => {
+                if (roomBounds[roomId]) {
+                    roomBounds[roomId].showNumber = !roomBounds[roomId].showNumber;
+                }
+            });
+
+            if (currentBuilding) {
+                fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(roomBounds)
+                }).catch(e => console.error('Failed to save:', e));
+            }
+
+            redraw();
+        }
+
+        function bulkDeleteSelected() {
+            if (!confirm(`Delete ${selectedRooms.size} selected room(s)?`)) return;
+
+            selectedRooms.forEach(roomId => {
+                delete roomBounds[roomId];
+            });
+            selectedRooms.clear();
+
+            if (currentBuilding) {
+                fetch(`/api/building/${encodeURIComponent(currentBuilding)}/calibration/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(roomBounds)
+                }).catch(e => console.error('Failed to save:', e));
+            }
+
+            updateBulkPanel();
+            renderRoomList();
+            redraw();
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const canvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Account for zoom and pan transforms
+            const x = (canvasX - panX) / zoom;
+            const y = (canvasY - panY) / zoom;
+
+            if (editMode && editingRoom && roomBounds[editingRoom]) {
+                const room = roomBounds[editingRoom];
+
+                // Polygon node dragging
+                if (room.nodes && room.nodes.length > 0) {
+                    for (let i = 0; i < room.nodes.length; i++) {
+                        const node = room.nodes[i];
+                        if (Math.abs(x - node.x) < 12 && Math.abs(y - node.y) < 12) {
+                            dragHandle = 'node';
+                            dragNodeIndex = i;
+                            isDrawing = true;
+                            startX = x;
+                            startY = y;
+                            return;
+                        }
+                    }
+                    return;
+                }
+
+                // Rectangle room editing
+                const angle = room.angle || 0;
+                const handleSize = 18;
+                const centerX = room.x + room.w / 2;
+                const centerY = room.y + room.h / 2;
+                const rotRadius = Math.max(room.w, room.h) / 2 + 30;
+
+                // Check rotation handle FIRST (bigger hitbox)
+                const rotHandleX = centerX + Math.cos((angle - 90) * Math.PI / 180) * rotRadius;
+                const rotHandleY = centerY + Math.sin((angle - 90) * Math.PI / 180) * rotRadius;
+
+                if (Math.abs(x - rotHandleX) < 28 && Math.abs(y - rotHandleY) < 28) {
+                    dragHandle = 'rotate';
+                    isDrawing = true;
+                    startX = x;
+                    startY = y;
+                    return;
+                }
+
+                // Transform mouse into rotated space
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const rad = angle * Math.PI / 180;
+                const localX = dx * Math.cos(-rad) - dy * Math.sin(-rad);
+                const localY = dx * Math.sin(-rad) + dy * Math.cos(-rad);
+
+                // Check corners in rotated space
+                const corners = [
+                    { name: 'tl', px: -room.w / 2, py: -room.h / 2 },
+                    { name: 'tr', px: room.w / 2, py: -room.h / 2 },
+                    { name: 'bl', px: -room.w / 2, py: room.h / 2 },
+                    { name: 'br', px: room.w / 2, py: room.h / 2 }
+                ];
+
+                for (const corner of corners) {
+                    if (Math.abs(localX - corner.px) < handleSize && Math.abs(localY - corner.py) < handleSize) {
+                        dragHandle = corner.name;
+                        isDrawing = true;
+                        startX = x;
+                        startY = y;
+                        return;
+                    }
+                }
+
+                // Check center in rotated space
+                if (Math.abs(localX) < room.w / 2 && Math.abs(localY) < room.h / 2) {
+                    dragHandle = 'center';
+                    isDrawing = true;
+                    startX = x;
+                    startY = y;
+                    return;
+                }
+            }
+
+            if (!calibrationMode) return;
+
+            // Only place nodes on LEFT click (button 0), allow middle-click panning
+            if (e.button === 0) {
+                polygonNodes.push({ x, y });
+                document.getElementById('nodeCount').textContent = polygonNodes.length;
+
+                // Enable complete button if at least 3 nodes
+                if (polygonNodes.length >= 3) {
+                    document.getElementById('completePolyBtn').disabled = false;
+                }
+
+                redraw();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const canvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Account for zoom and pan transforms
+            const x = (canvasX - panX) / zoom;
+            const y = (canvasY - panY) / zoom;
+
+            // Update cursor based on what's under the mouse
+            if (editMode && editingRoom && roomBounds[editingRoom]) {
+                const room = roomBounds[editingRoom];
+
+                // Polygon room editing
+                if (room.nodes && room.nodes.length > 0) {
+                    // Check for node clicks
+                    for (let i = 0; i < room.nodes.length; i++) {
+                        const node = room.nodes[i];
+                        if (Math.abs(x - node.x) < 12 && Math.abs(y - node.y) < 12) {
+                            canvas.style.cursor = isDrawing ? 'grabbing' : 'grab';
+                            return;
+                        }
+                    }
+                    canvas.style.cursor = 'grab';
+                } else {
+                    // Rectangle room editing
+                    const angle = room.angle || 0;
+                    const centerX = room.x + room.w / 2;
+                    const centerY = room.y + room.h / 2;
+                    const rotRadius = Math.max(room.w, room.h) / 2 + 30;
+                    const rotHandleX = centerX + Math.cos((angle - 90) * Math.PI / 180) * rotRadius;
+                    const rotHandleY = centerY + Math.sin((angle - 90) * Math.PI / 180) * rotRadius;
+
+                    // Rotation handle
+                    if (Math.abs(x - rotHandleX) < 28 && Math.abs(y - rotHandleY) < 28) {
+                        canvas.style.cursor = isDrawing ? 'grabbing' : 'grab';
+                    }
+                    // Corners
+                    else if ((Math.abs(x - room.x) < 18 && Math.abs(y - room.y) < 18) ||
+                             (Math.abs(x - (room.x + room.w)) < 18 && Math.abs(y - (room.y + room.h)) < 18)) {
+                        canvas.style.cursor = 'nwse-resize';
+                    }
+                    else if ((Math.abs(x - (room.x + room.w)) < 18 && Math.abs(y - room.y) < 18) ||
+                             (Math.abs(x - room.x) < 18 && Math.abs(y - (room.y + room.h)) < 18)) {
+                        canvas.style.cursor = 'nesw-resize';
+                    }
+                    // Center
+                    else if (Math.abs(x - centerX) < room.w / 2 && Math.abs(y - centerY) < room.h / 2) {
+                        canvas.style.cursor = isDrawing ? 'grabbing' : 'move';
+                    }
+                    else {
+                        canvas.style.cursor = 'grab';
+                    }
+                }
+            }
+
+            if (editMode && editingRoom && isDrawing && dragHandle) {
+                const room = roomBounds[editingRoom];
+                const dx = x - startX;
+                const dy = y - startY;
+
+                // Polygon node dragging
+                if (dragHandle === 'node' && dragNodeIndex >= 0 && room.nodes) {
+                    room.nodes[dragNodeIndex].x += dx;
+                    room.nodes[dragNodeIndex].y += dy;
+                } else if (room.x !== undefined) {
+                    // Rectangle room editing
+                    const centerX = room.x + room.w / 2;
+                    const centerY = room.y + room.h / 2;
+
+                    if (dragHandle === 'center') {
+                        room.x += dx;
+                        room.y += dy;
+                    } else if (dragHandle === 'tl') {
+                        room.x += dx;
+                        room.y += dy;
+                        room.w -= dx;
+                        room.h -= dy;
+                    } else if (dragHandle === 'tr') {
+                        room.y += dy;
+                        room.w += dx;
+                        room.h -= dy;
+                    } else if (dragHandle === 'bl') {
+                        room.x += dx;
+                        room.w -= dx;
+                        room.h += dy;
+                    } else if (dragHandle === 'br') {
+                        room.w += dx;
+                        room.h += dy;
+                    } else if (dragHandle === 'rotate') {
+                        // Calculate angle from center to mouse
+                        const angle1 = Math.atan2(startY - centerY, startX - centerX);
+                        const angle2 = Math.atan2(y - centerY, x - centerX);
+                        const angleDiff = (angle2 - angle1) * 180 / Math.PI;
+                        room.angle = (room.angle || 0) + angleDiff;
+                        room.angle = ((room.angle % 360) + 360) % 360;
+                    }
+                }
+
+                startX = x;
+                startY = y;
+                updateEditOverlay();
+                redraw();
+                return;
+            }
+
+            if (!calibrationMode) return;
+            // Store current mouse for preview line
+            canvas.currentMouseX = x;
+            canvas.currentMouseY = y;
+            redraw();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+            dragHandle = null;
+            dragNodeIndex = -1;
+        });
+
+        // Helper function to check if point is inside polygon using ray casting
+        // Ray casting counts boundary crossings: an odd count means the clicked point is inside.
+        function pointInPolygon(point, polygon) {
+            if (!polygon || polygon.length < 3) return false;
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i].x, yi = polygon[i].y;
+                const xj = polygon[j].x, yj = polygon[j].y;
+                const intersect = ((yi > point.y) !== (yj > point.y)) &&
+                    (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (calibrationMode || editMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const canvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Account for zoom and pan transforms
+            const x = (canvasX - panX) / zoom;
+            const y = (canvasY - panY) / zoom;
+
+            for (const [roomId, bounds] of Object.entries(roomBounds)) {
+                let isInside = false;
+
+                if (bounds.nodes) {
+                    // Polygon room
+                    isInside = pointInPolygon({ x, y }, bounds.nodes);
+                } else {
+                    // Rectangle room (legacy)
+                    isInside = x >= bounds.x && x <= bounds.x + bounds.w && y >= bounds.y && y <= bounds.y + bounds.h;
+                }
+
+                if (isInside) {
+                    showColorPopover(roomId, e.clientX, e.clientY);
+                    break;
+                }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && editMode) {
+                closeEditRoom();
+            }
+            if (e.key === 'Escape' && colorPopoverRoom) {
+                hideColorPopover();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            const popover = document.getElementById('colorPopover');
+            if (popover && colorPopoverRoom && !popover.contains(e.target) && e.target.id !== 'canvas') {
+                hideColorPopover();
+            }
+        });
+
+        // Try optional local branding; the app still works when no logo file exists.
+        function loadLogo() {
+            const logoContainer = document.getElementById('logoContainer');
+            fetch('/api/logo')
+                .then(response => {
+                    if (response.ok) {
+                        logoContainer.innerHTML = `<img src="/api/logo?t=${Date.now()}" alt="MapProj Logo" style="max-height: 50px; max-width: 200px; object-fit: contain;">`;
+                    }
+                })
+                .catch(err => {
+                    console.log('Logo not available:', err);
+                });
+        }
+
+        // Start loading page data once the HTML elements are available.
+        function initializeApp() {
+            const editRoomAngle = document.getElementById('editRoomAngle');
+            if (editRoomAngle) {
+                editRoomAngle.addEventListener('input', (e) => {
+                    document.getElementById('editAngleDisplay').textContent = e.target.value + '°';
+                });
+            }
+            const newBuildingName = document.getElementById('newBuildingName');
+            if (newBuildingName) {
+                newBuildingName.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') createNewBuilding();
+                });
+            }
+            loadLogo();
+            loadBuildings();
+            loadUsers();
+            loadLegend();
+            checkWelcome();
+        }
+
+        // Call immediately if DOM is ready, or wait for it
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // Repaint the canvas from current state. Drawing pixels does not save anything to the server.
+        function redraw() {
+            if (!backgroundImage) {
+                canvas.width = 1000;
+                canvas.height = 600;
+                const gradient = ctx.createLinearGradient(0, 0, 1000, 600);
+                gradient.addColorStop(0, '#f0f0f0');
+                gradient.addColorStop(1, '#e0e0e0');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 1000, 600);
+                ctx.fillStyle = '#999';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Select a building to begin', 500, 300);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+
+            ctx.translate(panX, panY);
+            ctx.scale(zoom, zoom);
+
+            ctx.drawImage(backgroundImage, 0, 0);
+
+            function getColorValue(colorName) {
+                // Use legend colors if available, fall back to defaults
+                if (currentLegend[colorName]) {
+                    return currentLegend[colorName].color;
+                }
+                const colors = {
+                    'white': '#ffffff',
+                    'red': '#ff4757',
+                    'yellow': '#ffc107',
+                    'green': '#2ecc71'
+                };
+                return colors[colorName] || '#ffffff';
+            }
+
+            function drawPolygon(nodes, color, isSelected, roomId, leftConnected) {
+                if (!nodes || nodes.length < 2) return;
+
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 0.4;
+                ctx.beginPath();
+                ctx.moveTo(nodes[0].x, nodes[0].y);
+                for (let i = 1; i < nodes.length; i++) {
+                    ctx.lineTo(nodes[i].x, nodes[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1;
+
+                // Draw blue diagonal stripes if left connected
+                if (leftConnected) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(nodes[0].x, nodes[0].y);
+                    for (let i = 1; i < nodes.length; i++) {
+                        ctx.lineTo(nodes[i].x, nodes[i].y);
+                    }
+                    ctx.closePath();
+                    ctx.clip();
+
+                    const minX = Math.min(...nodes.map(n => n.x));
+                    const maxX = Math.max(...nodes.map(n => n.x));
+                    const minY = Math.min(...nodes.map(n => n.y));
+                    const maxY = Math.max(...nodes.map(n => n.y));
+
+                    ctx.strokeStyle = '#0066ff';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([8, 8]);
+
+                    const spacing = 12;
+                    for (let i = minX - 200; i < maxX + 200; i += spacing) {
+                        ctx.beginPath();
+                        ctx.moveTo(i, minY - 200);
+                        ctx.lineTo(i + maxY - minY + 400, maxY + 200);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+
+                // Draw border
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(nodes[0].x, nodes[0].y);
+                for (let i = 1; i < nodes.length; i++) {
+                    ctx.lineTo(nodes[i].x, nodes[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+
+                // Draw selection border
+                if (isSelected) {
+                    ctx.strokeStyle = '#ff4444';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(nodes[0].x, nodes[0].y);
+                    for (let i = 1; i < nodes.length; i++) {
+                        ctx.lineTo(nodes[i].x, nodes[i].y);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+
+                // Calculate center for room number
+                let centerX = 0, centerY = 0;
+                nodes.forEach(node => { centerX += node.x; centerY += node.y; });
+                centerX /= nodes.length;
+                centerY /= nodes.length;
+
+                // Draw room number if enabled
+                if (roomId in roomBounds && roomBounds[roomId].showNumber !== false) {
+                    ctx.fillStyle = '#333';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(roomId, centerX, centerY);
+                }
+
+                // Draw editable nodes if editing this room
+                if (editingRoom === roomId && editMode && nodes) {
+                    nodes.forEach((node, idx) => {
+                        ctx.fillStyle = '#ffff00';
+                        ctx.strokeStyle = '#ff8800';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                        // Draw node number
+                        ctx.fillStyle = '#000';
+                        ctx.font = 'bold 10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(idx + 1, node.x, node.y);
+                    });
+                }
+            }
+
+            for (const [roomId, bounds] of Object.entries(roomBounds)) {
+                const color = getColorValue(bounds.color || 'white');
+                const isSelected = roomId === selectedRoom || selectedRooms.has(roomId);
+                if (bounds.nodes) {
+                    // Polygon room
+                    drawPolygon(bounds.nodes, color, isSelected, roomId, bounds.leftConnected);
+                } else if (bounds.x !== undefined) {
+                    // Legacy rectangle room (for backwards compatibility)
+                    function drawRotatedRect(x, y, w, h, angle, color, isSelected, roomId, leftConnected) {
+                        const centerX = x + w / 2;
+                        const centerY = y + h / 2;
+
+                        ctx.save();
+                        ctx.translate(centerX, centerY);
+                        ctx.rotate((angle || 0) * Math.PI / 180);
+
+                        ctx.fillStyle = color;
+                        ctx.globalAlpha = 0.4;
+                        ctx.fillRect(-w / 2, -h / 2, w, h);
+                        ctx.globalAlpha = 1;
+
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+                        if (isSelected) {
+                            ctx.strokeStyle = '#ff4444';
+                            ctx.lineWidth = 3;
+                            ctx.strokeRect(-w / 2, -h / 2, w, h);
+                        }
+
+                        ctx.fillStyle = '#333';
+                        ctx.font = 'bold 14px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        if (roomId in roomBounds && roomBounds[roomId].showNumber !== false) {
+                            ctx.fillText(roomId, 0, 0);
+                        }
+
+                        ctx.restore();
+
+                        // Draw blue diagonal stripes if left connected (after restore, outside rotation)
+                        if (leftConnected) {
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(centerX - w / 2, centerY - h / 2);
+                            ctx.lineTo(centerX + w / 2, centerY - h / 2);
+                            ctx.lineTo(centerX + w / 2, centerY + h / 2);
+                            ctx.lineTo(centerX - w / 2, centerY + h / 2);
+                            ctx.closePath();
+                            ctx.clip();
+
+                            ctx.strokeStyle = '#0066ff';
+                            ctx.lineWidth = 4;
+                            ctx.setLineDash([8, 8]);
+
+                            const spacing = 12;
+                            for (let i = centerX - w - 100; i < centerX + w + 100; i += spacing) {
+                                ctx.beginPath();
+                                ctx.moveTo(i, centerY - h - 100);
+                                ctx.lineTo(i + h + 200, centerY + h + 100);
+                                ctx.stroke();
+                            }
+
+                            ctx.restore();
+                        }
+                    }
+                    drawRotatedRect(bounds.x, bounds.y, bounds.w, bounds.h, bounds.angle || 0, color, isSelected, roomId, bounds.leftConnected);
+                }
+            }
+
+            // Draw polygon nodes and preview
+            if (calibrationMode) {
+                // Draw edges and preview line
+                if (polygonNodes.length > 0) {
+                    ctx.strokeStyle = '#ffd60a';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+
+                    // Draw lines between nodes
+                    ctx.beginPath();
+                    ctx.moveTo(polygonNodes[0].x, polygonNodes[0].y);
+                    for (let i = 1; i < polygonNodes.length; i++) {
+                        ctx.lineTo(polygonNodes[i].x, polygonNodes[i].y);
+                    }
+
+                    // Draw preview line to current mouse position
+                    if (canvas.currentMouseX !== undefined && canvas.currentMouseY !== undefined) {
+                        ctx.lineTo(canvas.currentMouseX, canvas.currentMouseY);
+                    }
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Draw nodes as circles
+                    ctx.fillStyle = '#ffd60a';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    polygonNodes.forEach(node => {
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    });
+
+                    // Draw completed polygon if it exists
+                    if (drawingPolygon && drawingPolygon.length > 0) {
+                        ctx.fillStyle = '#ff8c00';
+                        ctx.globalAlpha = 0.3;
+                        ctx.beginPath();
+                        ctx.moveTo(drawingPolygon[0].x, drawingPolygon[0].y);
+                        for (let i = 1; i < drawingPolygon.length; i++) {
+                            ctx.lineTo(drawingPolygon[i].x, drawingPolygon[i].y);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+
+                        ctx.strokeStyle = '#ff4444';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(drawingPolygon[0].x, drawingPolygon[0].y);
+                        for (let i = 1; i < drawingPolygon.length; i++) {
+                            ctx.lineTo(drawingPolygon[i].x, drawingPolygon[i].y);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
+                    }
+                }
+            }
+
+
+            if (editMode && editingRoom && roomBounds[editingRoom]) {
+                const room = roomBounds[editingRoom];
+                const angle = room.angle || 0;
+                const handleSize = 12;
+                const centerX = room.x + room.w / 2;
+                const centerY = room.y + room.h / 2;
+
+                ctx.save();
+
+                // Draw rotation circle indicator
+                ctx.strokeStyle = '#ff4444';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                const rotRadius = Math.max(room.w, room.h) / 2 + 30;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, rotRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Draw rotation handle (circle at top)
+                const rotHandleX = centerX + Math.cos((angle - 90) * Math.PI / 180) * rotRadius;
+                const rotHandleY = centerY + Math.sin((angle - 90) * Math.PI / 180) * rotRadius;
+
+                ctx.fillStyle = '#ff4444';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(rotHandleX, rotHandleY, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw rotation indicator arrow
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('↻', rotHandleX, rotHandleY);
+
+                // Apply rotation for corner handles and center highlight
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle * Math.PI / 180);
+
+                // Draw corner handles (rotated)
+                ctx.fillStyle = '#ff8c00';
+                const corners = [
+                    { px: -room.w / 2, py: -room.h / 2 },
+                    { px: room.w / 2, py: -room.h / 2 },
+                    { px: -room.w / 2, py: room.h / 2 },
+                    { px: room.w / 2, py: room.h / 2 }
+                ];
+
+                corners.forEach(corner => {
+                    ctx.fillRect(corner.px - handleSize / 2, corner.py - handleSize / 2, handleSize, handleSize);
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(corner.px - handleSize / 2, corner.py - handleSize / 2, handleSize, handleSize);
+                });
+
+                // Highlight center for dragging (rotated)
+                ctx.fillStyle = 'rgba(255, 68, 68, 0.2)';
+                ctx.fillRect(-room.w / 2, -room.h / 2, room.w, room.h);
+
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        redraw();
+        loadBuildings();
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                const response = await fetch('/logout', {method: 'POST'});
+                if (response.ok) window.location.href = '/login';
+                else alert('Could not log out. Reload and try again.');
+            }
+        }
+
+        function showWelcomeModal() {
+            const modal = document.getElementById('welcomeModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.style.visibility = 'visible';
+                console.log('Welcome modal shown');
+                // Set checkbox state based on localStorage
+                const checkbox = document.getElementById('disableWelcomeCheckbox');
+                if (checkbox) {
+                    checkbox.checked = localStorage.getItem('disableWelcome') === 'true';
+                    checkbox.onchange = () => {
+                        if (checkbox.checked) {
+                            localStorage.setItem('disableWelcome', 'true');
+                            console.log('Welcome disabled');
+                        } else {
+                            localStorage.removeItem('disableWelcome');
+                            console.log('Welcome enabled');
+                        }
+                    };
+                }
+            } else {
+                console.log('Welcome modal not found');
+            }
+        }
+
+        function closeWelcomeModal() {
+            const modal = document.getElementById('welcomeModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.style.visibility = 'hidden';
+            }
+        }
+
+        // Show welcome modal unless disabled
+        // Use browser localStorage for this browser's welcome preference, not shared server data.
+        function checkWelcome() {
+            try {
+                const isDisabled = localStorage.getItem('disableWelcome') === 'true';
+                console.log('checkWelcome - disableWelcome:', isDisabled);
+                if (!isDisabled) {
+                    setTimeout(showWelcomeModal, 500);
+                }
+            } catch (e) {
+                console.log('Welcome modal error:', e);
+            }
+        }
+
+        // User Management
+        // Fetch public account fields to populate the administrator's user controls.
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                const userList = document.getElementById('userList');
+
+                if (data.users.length === 0) {
+                    userList.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">No users</div>';
+                    return;
+                }
+
+                userList.innerHTML = data.users.map(user => `
+                    <div style="padding: 10px; margin-bottom: 8px; background: #1a1a1a; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong>${user.username}</strong>
+                            <div style="display: flex; gap: 4px;">
+                                <button class="btn-secondary" onclick="showResetPasswordDialog('${user.username}')" style="padding: 4px 8px; font-size: 10px;">Reset Pwd</button>
+                                <button class="btn-danger" onclick="deleteUser('${user.username}')" style="padding: 4px 8px; font-size: 10px;">Delete</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 11px; color: #bbb; margin: 0;">Role:</label>
+                            <select id="role-${user.username}" style="padding: 4px 6px; background: #252d42; border: 1px solid #3d4571; border-radius: 3px; color: #f0f0f0; font-size: 11px;">
+                                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
+                                <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
+                                <option value="technology" ${user.role === 'technology' ? 'selected' : ''}>technology</option>
+                                <option value="readonly" ${user.role === 'readonly' ? 'selected' : ''}>readonly</option>
+                            </select>
+                            <button class="btn-primary" onclick="updateUserRole('${user.username}')" style="padding: 4px 8px; font-size: 10px; flex: 1;">Update Role</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load users:', e);
+            }
+        }
+
+        function showAddUserDialog() {
+            document.getElementById('addUserDialog').style.display = 'flex';
+            document.getElementById('addUsername').focus();
+        }
+
+        function closeAddUserDialog() {
+            document.getElementById('addUserDialog').style.display = 'none';
+            document.getElementById('addUsername').value = '';
+            document.getElementById('addPassword').value = '';
+            document.getElementById('addRole').value = 'user';
+        }
+
+        async function addNewUser() {
+            const username = document.getElementById('addUsername').value.trim();
+            const password = document.getElementById('addPassword').value;
+            const role = document.getElementById('addRole').value;
+
+            if (!username || !password) {
+                alert('Username and password required');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                    return;
+                }
+
+                closeAddUserDialog();
+                loadUsers();
+                alert(`User ${username} created!`);
+            } catch (e) {
+                console.error('Failed to create user:', e);
+                alert('Failed to create user');
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Delete user ${username}?`)) return;
+
+            try {
+                const response = await fetch(`/api/user/${username}/delete`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                    return;
+                }
+
+                loadUsers();
+                alert(`User ${username} deleted!`);
+            } catch (e) {
+                console.error('Failed to delete user:', e);
+                alert('Failed to delete user');
+            }
+        }
+
+        async function updateUserRole(username) {
+            const roleSelect = document.getElementById(`role-${username}`);
+            const newRole = roleSelect.value;
+
+            try {
+                const response = await fetch(`/api/user/${username}/edit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newRole })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                    loadUsers();
+                    return;
+                }
+
+                alert(`✓ ${username} role updated to ${newRole}`);
+                loadUsers();
+            } catch (e) {
+                console.error('Failed to update user role:', e);
+                alert('Failed to update role');
+            }
+        }
+
+        function showResetPasswordDialog(username) {
+            const dialog = document.createElement('div');
+            dialog.className = 'modal-overlay';
+            dialog.innerHTML = `
+                <div class="modal-content" style="max-width: 350px;">
+                    <h3>Reset Password: ${username}</h3>
+                    <div class="form-group">
+                        <label for="resetPasswordInput">New Password:</label>
+                        <input type="text" id="resetPasswordInput" placeholder="Enter new password" autocomplete="new-password" spellcheck="false" autocapitalize="none" autofocus>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-success" onclick="resetUserPassword('${username}'); this.closest('.modal-overlay').remove();" style="flex: 1;">Reset</button>
+                        <button class="btn-secondary" onclick="this.closest('.modal-overlay').remove();" style="flex: 1;">Cancel</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(dialog);
+            document.getElementById('resetPasswordInput').focus();
+        }
+
+        // Send a replacement password to Python, where it is hashed and old sessions are invalidated.
+        async function resetUserPassword(username) {
+            const newPassword = document.getElementById('resetPasswordInput').value.trim();
+
+            if (!newPassword) {
+                alert('Please enter a new password');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/user/${username}/edit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: newPassword })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                    return;
+                }
+
+                alert(`✓ Password reset for ${username}`);
+                loadUsers();
+            } catch (e) {
+                console.error('Failed to reset password:', e);
+                alert('Failed to reset password');
+            }
+        }
+
+        async function exportUsersText() {
+            try {
+                const response = await fetch('/api/users/export/text');
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'users_list.txt';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                alert('✓ User list exported as TXT');
+            } catch (e) {
+                console.error('Failed to export users:', e);
+                alert('Failed to export users');
+            }
+        }
+
+        async function exportUsersJson() {
+            try {
+                const response = await fetch('/api/users/export/json');
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'users.json';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                alert('✓ User list exported as JSON');
+            } catch (e) {
+                console.error('Failed to export users:', e);
+                alert('Failed to export users');
+            }
+        }
+
+        // Collapsible sections
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            section.classList.toggle('collapsed');
+        }
+
+        function popoutSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section.dataset.poppedOut) return;
+            const title = section.parentElement.querySelector('h2').textContent;
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="width: 90%; height: 90%; display: flex; flex-direction: column; max-width: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2></h2>
+                        <button class="btn-secondary" style="padding: 8px 12px;">✕ Close</button>
+                    </div>
+                    <div data-section-content style="flex: 1; overflow-y: auto; padding-right: 8px;"></div>
+                </div>
+            `;
+            // Move the actual controls, not copied HTML: IDs, live values and listeners stay intact.
+            const content = modal.querySelector('[data-section-content]');
+            modal.querySelector('h2').textContent = title;
+            content.append(...section.childNodes);
+            section.dataset.poppedOut = 'true';
+            modal.querySelector('button').onclick = () => {
+                section.append(...content.childNodes);
+                delete section.dataset.poppedOut;
+                modal.remove();
+            };
+            document.body.appendChild(modal);
+        }
+
+        // Notes Management (Admin)
+        // Display active notes with escaped text; attach button handlers separately from user content.
+        async function loadAdminNotes(roomId) {
+            if (!currentBuilding) return;
+
+            try {
+                const response = await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/notes`);
+                const allNotes = await response.json();
+                const roomNotes = allNotes[roomId] || [];
+
+                const notesSection = document.getElementById('notesSection');
+                if (roomNotes.length === 0) {
+                    notesSection.innerHTML = '<p style="color: #999; font-size: 11px;">No notes</p>';
+                    return;
+                }
+
+                notesSection.innerHTML = `<div style="font-size: 11px; color: #bbb; margin-bottom: 8px;"><strong>${roomNotes.length} note(s):</strong></div>` +
+                    roomNotes.map((note, idx) =>
+                        `<div style="padding: 8px; margin-bottom: 6px; background: #1a1a2e; border-left: 3px solid #E8A830; border-radius: 3px; font-size: 10px;">
+                            <div style="color: #999;">${escapeHtml(note.author)} - ${new Date(note.timestamp).toLocaleDateString()}</div>
+                            <div style="color: #f0f0f0; margin: 4px 0;">"${escapeHtml(note.text)}"</div>
+                            <div style="display: flex; gap: 4px; margin-top: 6px;">
+                                <button data-resolve-note="${idx}" style="flex: 1; padding: 4px; background: #5a9f4a; color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer;">✓ Resolve</button>
+                                <button data-delete-note="${idx}" style="flex: 1; padding: 4px; background: #D4553F; color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer;">✕ Delete</button>
+                            </div>
+                        </div>`
+                    ).join('');
+                notesSection.querySelectorAll('[data-resolve-note]').forEach(button => {
+                    button.addEventListener('click', () => resolveNote(roomId, Number(button.dataset.resolveNote)));
+                });
+                notesSection.querySelectorAll('[data-delete-note]').forEach(button => {
+                    button.addEventListener('click', () => deleteNote(roomId, Number(button.dataset.deleteNote)));
+                });
+            } catch (e) {
+                console.error('Failed to load notes:', e);
+            }
+        }
+
+        // Move a note into the server's history, then reload the active notes for this room.
+        async function resolveNote(roomId, noteId) {
+            if (!currentBuilding) return;
+
+            try {
+                const response = await fetch(
+                    `/api/building/${encodeURIComponent(currentBuilding)}/notes/${encodeURIComponent(roomId)}/${noteId}/resolve`,
+                    { method: 'POST' }
+                );
+
+                if (response.ok) {
+                    alert('Note moved to history');
+                    await loadAdminNotes(roomId);
+                }
+            } catch (e) {
+                console.error('Failed to resolve note:', e);
+            }
+        }
+
+        async function deleteNote(roomId, noteId) {
+            if (!currentBuilding) return;
+            if (!confirm('Delete this note?')) return;
+
+            try {
+                const response = await fetch(
+                    `/api/building/${encodeURIComponent(currentBuilding)}/notes/${encodeURIComponent(roomId)}/${noteId}`,
+                    { method: 'DELETE' }
+                );
+
+                if (response.ok) {
+                    await loadAdminNotes(roomId);
+                }
+            } catch (e) {
+                console.error('Failed to delete note:', e);
+            }
+        }
+
+        // Legend Management
+        let currentLegend = {};
+
+        // Fetch this building's status definitions so colors and labels match its saved settings.
+        async function loadLegend() {
+            if (!currentBuilding) {
+                currentLegend = {};
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/legend`);
+                const data = await response.json();
+                // Convert ordered array to object preserving insertion order
+                if (Array.isArray(data)) {
+                    currentLegend = Object.fromEntries(data.map(e => [e.key, e]));
+                } else {
+                    currentLegend = data;
+                }
+                renderLegendEditor();
+                renderLegendDisplay();
+            } catch (e) {
+                console.error('Failed to load legend:', e);
+            }
+        }
+
+        function renderLegendDisplay() {
+            updateLeftConnectedButton();
+            const display = document.getElementById('legendDisplay');
+            if (!display || !currentLegend || Object.keys(currentLegend).length === 0) return;
+
+            display.innerHTML = Object.entries(currentLegend).map(([key, item]) => {
+                // Skip modifier if not enabled
+                if (key === 'modifier' && !item.enabled) return '';
+
+                return `
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 10px; margin-bottom: 8px; background: #1a1a2e; border-radius: 6px; border-left: 4px solid ${item.color};">
+                        <div style="width: 32px; height: 32px; background: ${item.color}; border-radius: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); flex-shrink: 0;"></div>
+                        <div>
+                            <div style="font-weight: bold; color: #f0f0f0; font-size: 13px;">${item.label}</div>
+                            <div style="font-size: 11px; color: #999; font-family: monospace;">${item.color}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        let draggedItem = null;
+
+        function renderLegendEditor() {
+            const editor = document.getElementById('legendEditor');
+            editor.innerHTML = Object.entries(currentLegend).map(([key, item], index) => {
+                const isModifier = key === 'modifier';
+                const isEnabled = item.enabled !== false; // Default to true if not set
+                return `
+                <div draggable="true" ondragstart="draggedItem = '${key}'; this.style.opacity='0.5';" ondragend="this.style.opacity='1'; draggedItem=null;" ondragover="event.preventDefault();" ondrop="reorderLegend('${key}'); renderLegendEditor();" style="padding: 10px; margin-bottom: 8px; background: #1a1a1a; border-radius: 4px; display: flex; gap: 10px; align-items: center; cursor: move; user-select: none;">
+                    <span style="color: #666; font-size: 12px; opacity: 0.6;">⋮⋮</span>
+                    <input type="color" value="${item.color}" onchange="currentLegend['${key}'].color = this.value; renderLegendDisplay(); redraw();" style="width: 40px; height: 30px; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0;">
+                    <input type="text" value="${item.label}" onchange="currentLegend['${key}'].label = this.value; renderLegendDisplay();" placeholder="Status name" style="flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #444; border-radius: 4px; color: #f0f0f0; font-size: 12px;">
+                    ${isModifier ? `<input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="currentLegend['${key}'].enabled = this.checked; renderLegendDisplay(); showColorPopover(colorPopoverRoom, event.clientX, event.clientY);" style="cursor: pointer; width: 16px; height: 16px;" title="Enable/disable modifier">` : ''}
+                </div>
+            `;
+            }).join('');
+        }
+
+        function reorderLegend(targetKey) {
+            if (!draggedItem || draggedItem === targetKey) return;
+
+            const entries = Object.entries(currentLegend);
+            const draggedIndex = entries.findIndex(([k]) => k === draggedItem);
+            const targetIndex = entries.findIndex(([k]) => k === targetKey);
+
+            if (draggedIndex === -1 || targetIndex === -1) return;
+
+            // Reorder
+            const [draggedEntry] = entries.splice(draggedIndex, 1);
+            entries.splice(targetIndex, 0, draggedEntry);
+
+            currentLegend = Object.fromEntries(entries);
+        }
+
+        // Send edited labels and colors to this building's legend file.
+        async function saveLegend() {
+            if (!currentBuilding) {
+                alert('Please select a building first');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/legend/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentLegend)
+                });
+
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || response.redirected || !result.success) {
+                    throw new Error(result.error || 'Save rejected. Reload the page and sign in as an administrator.');
+                }
+
+                renderLegendDisplay();
+                redraw();
+                alert('✓ Legend updated!');
+            } catch (e) {
+                console.error('Failed to save legend:', e);
+                alert(e.message || 'Failed to save legend');
+            }
+        }
+    </script>
+</body>
+</html>

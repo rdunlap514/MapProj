@@ -1,0 +1,20 @@
+[
+  {
+    "id": 0,
+    "text": "What?",
+    "author": "JDoe",
+    "timestamp": "2026-09-09T21:26:46.110198",
+    "resolved": true,
+    "resolved_at": "2026-09-09T21:27:11.835699",
+    "resolved_by": "admin"
+  },
+  {
+    "id": 0,
+    "text": "This room is not clean at all",
+    "author": "JDoe",
+    "timestamp": "2026-09-09T21:27:48.366042",
+    "resolved": true,
+    "resolved_at": "2026-09-09T21:27:59.266035",
+    "resolved_by": "admin"
+  }
+]

@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include '_security.html' %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapProj - Room Status Map</title>
+    <link rel="icon" type="image/png" href="/api/logo">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #f0f0f0;
+            min-height: 100vh;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
+            padding: 10px 24px;
+            border-bottom: 2px solid #D4553F;
+            box-shadow: 0 4px 16px rgba(255, 68, 68, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .logo-container img {
+            max-height: 40px;
+            max-width: 160px;
+            object-fit: contain;
+        }
+
+        .logo-placeholder {
+            height: 40px;
+            width: 40px;
+            background: rgba(212, 85, 63, 0.1);
+            border: 2px solid #D4553F;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #D4553F;
+            font-size: 20px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            margin: 0;
+            background: linear-gradient(135deg, #D4553F, #E8A830);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .building-selector {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .building-selector select {
+            padding: 10px 12px;
+            border: 1px solid #E8A830;
+            border-radius: 6px;
+            background: #1a1a1a;
+            color: #f0f0f0;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .building-selector select:focus {
+            outline: none;
+            border-color: #D4553F;
+            box-shadow: 0 0 12px rgba(255, 68, 68, 0.3);
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow: auto;
+            position: relative;
+            background: #0f0f1e;
+        }
+
+        canvas {
+            background: white;
+            border: 3px solid #D4553F;
+            border-radius: 8px;
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 8px 32px rgba(255, 68, 68, 0.3);
+            cursor: pointer;
+        }
+
+        #colorPopover {
+            display: none;
+            position: absolute;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border: 2px solid #D4553F;
+            border-radius: 8px;
+            padding: 12px;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(255, 68, 68, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        #colorPopoverRoom {
+            font-size: 12px;
+            font-weight: bold;
+            color: #D4553F;
+            margin-bottom: 8px;
+        }
+
+        .color-buttons {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .color-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .color-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-btn.white { background: #3d4571; color: #e0e0e0; border: 1px solid #4d5581; }
+        .color-btn.red { background: #ff4757; color: white; }
+        .color-btn.yellow { background: #ffc107; color: #333; }
+        .color-btn.green { background: #2ecc71; color: white; }
+
+        #leftConnectedBtn {
+            width: 100%;
+            padding: 8px;
+            background: #0066ff;
+            color: white;
+            border: 2px solid #0066ff;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #leftConnectedBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 102, 255, 0.4);
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border: 1px solid #D4553F;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+            max-width: 200px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            color: #d0d0d0;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 10px;
+            border: 1px solid #666;
+        }
+
+        .logout-btn {
+            padding: 10px 18px;
+            background: #2a2a2a;
+            color: #f0f0f0;
+            border: 1px solid #444;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #333;
+            border-color: #E8A830;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <div class="logo-container" id="logoContainer">
+                <div class="logo-placeholder">🗺️</div>
+            </div>
+            <h1>MapProj</h1>
+            <div class="building-selector">
+                <label for="buildingSelect" style="font-size: 13px; color: #d0d0d0;">Building:</label>
+                <select id="buildingSelect" onchange="loadSelectedBuilding()">
+                    <option value="">Select a building...</option>
+                </select>
+            </div>
+            <button class="logout-btn" onclick="logout()" style="margin-left: auto;">Logout</button>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <div id="welcomeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(6px);">
+        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #222 100%); border: 2px solid #D4553F; border-radius: 12px; padding: 40px; max-width: 520px; box-shadow: 0 20px 60px rgba(212, 85, 63, 0.2);">
+            <h2 style="font-size: 28px; margin-bottom: 16px; background: linear-gradient(135deg, #D4553F, #E8A830); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;">Welcome to MapProj</h2>
+            <p style="color: #d0d0d0; font-size: 14px; line-height: 1.7; margin-bottom: 20px;">Mark room maintenance progress across buildings in real-time.</p>
+
+            <div style="background: #0f0f0f; border-left: 3px solid #E8A830; padding: 14px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="color: #e8a830; font-weight: 600; font-size: 13px; margin-bottom: 8px;">Quick Start:</p>
+                <ol style="color: #c0c0c0; font-size: 13px; line-height: 1.8; margin-left: 20px;">
+                    <li><strong>Select Building</strong> — Choose from the dropdown</li>
+                    <li><strong>Click Any Room</strong> — Opens color/status options</li>
+                    <li><strong>Mark Status</strong> — Choose the current room color</li>
+                    <li><strong>Add Notes</strong> — Leave notes for admin to review</li>
+                </ol>
+            </div>
+
+            <div style="background: #0f0f0f; border-left: 3px solid #D4553F; padding: 14px; border-radius: 6px; margin-bottom: 24px;">
+                <p style="color: #d4553f; font-weight: 600; font-size: 13px; margin-bottom: 8px;">Status Colors (Customizable by Admin):</p>
+                <ul style="color: #c0c0c0; font-size: 13px; line-height: 1.8; margin-left: 20px;">
+                    <li>Check the legend in the bottom-right for current building's status meanings</li>
+                    <li>Colors may vary per building</li>
+                </ul>
+            </div>
+
+            <div style="background: #0f0f0f; border-left: 3px solid #5a9f4a; padding: 14px; border-radius: 6px; margin-bottom: 24px;">
+                <p style="color: #5a9f4a; font-weight: 600; font-size: 13px; margin-bottom: 8px;">💡 Navigation Tips:</p>
+                <ul style="color: #c0c0c0; font-size: 13px; line-height: 1.8; margin-left: 20px;">
+                    <li>Scroll wheel to zoom in/out</li>
+                    <li>Middle-click drag to pan the map</li>
+                </ul>
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 16px; padding: 10px; background: #0a0a0a; border-radius: 6px;">
+                <input type="checkbox" id="disableWelcomeCheckbox" style="cursor: pointer; width: 16px; height: 16px;">
+                <label for="disableWelcomeCheckbox" style="color: #999; font-size: 12px; cursor: pointer; flex: 1; margin: 0;">Don't show this again</label>
+            </div>
+
+            <button class="logout-btn" onclick="closeWelcomeModal()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #D4553F, #E8A830); color: #000; border: none; font-weight: 600;">Let's Go</button>
+        </div>
+    </div>
+
+    <div id="colorPopover" style="max-width: 320px;">
+        <div id="colorPopoverRoom"></div>
+        <div id="colorButtonsContainer" class="color-buttons"></div>
+        <button id="leftConnectedBtn" onclick="toggleLeftConnected()">🔵 Modifier</button>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
+            <textarea id="notesInput" placeholder="Add a note..." style="width: 100%; height: 60px; padding: 8px; background: #0a0a0a; border: 1px solid #444; border-radius: 4px; color: #f0f0f0; font-size: 12px; font-family: inherit; resize: none;"></textarea>
+            <button onclick="submitNote()" style="width: 100%; padding: 8px; margin-top: 6px; background: #5a9f4a; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;">Submit Note</button>
+        </div>
+        <div id="notesDisplay" style="margin-top: 10px; font-size: 11px;"></div>
+    </div>
+
+    <div class="legend" id="legendDisplay"></div>
+
+    <script>
+        // Encode user content before including it in an HTML template.
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[char]));
+        }
+
+        // Flask/Jinja fills this boolean before sending the page. The server still enforces permissions.
+        const canEdit = {{ (session.get('role') != 'readonly') | tojson }};
+        let savingRoom = false;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let backgroundImage = null;
+        let currentBuilding = null;
+        // roomBounds maps room IDs to geometry/status. Updating this object alone does not update disk.
+        let roomBounds = {};
+        let colorPopoverRoom = null;
+
+        // Zoom and pan change the view, not the saved coordinates on the original floor-plan image.
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let lastPanX = 0;
+        let lastPanY = 0;
+
+        // Zoom with mouse wheel
+        canvas.addEventListener("wheel", function(e) {
+            e.preventDefault();
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseCanvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const mouseCanvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            const mouseWorldX = (mouseCanvasX - panX) / zoom;
+            const mouseWorldY = (mouseCanvasY - panY) / zoom;
+
+            if (e.deltaY < 0) {
+                zoom *= 1.1;
+            } else {
+                zoom /= 1.1;
+            }
+
+            zoom = Math.max(0.25, Math.min(zoom, 8));
+
+            panX = mouseCanvasX - mouseWorldX * zoom;
+            panY = mouseCanvasY - mouseWorldY * zoom;
+
+            redraw();
+        }, { passive: false });
+
+        // Pan with middle mouse button
+        canvas.addEventListener("mousedown", function(e) {
+            if (e.button === 1) {
+                e.preventDefault();
+                isPanning = true;
+                lastPanX = e.clientX;
+                lastPanY = e.clientY;
+            }
+        });
+
+        canvas.addEventListener("mousemove", function(e) {
+            if (!isPanning) return;
+
+            panX += e.clientX - lastPanX;
+            panY += e.clientY - lastPanY;
+
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+
+            redraw();
+        });
+
+        window.addEventListener("mouseup", function() {
+            isPanning = false;
+        });
+
+        canvas.addEventListener("auxclick", function(e) {
+            if (e.button === 1) {
+                e.preventDefault();
+            }
+        });
+
+        // Fill the building selector from the server; the selector is only a view of saved folders.
+        async function loadBuildings() {
+            try {
+                const response = await fetch('/api/buildings');
+                const data = await response.json();
+                const select = document.getElementById('buildingSelect');
+
+                select.innerHTML = '<option value="">Select a building...</option>';
+                data.buildings.forEach(building => {
+                    const option = document.createElement('option');
+                    option.value = building;
+                    option.textContent = building;
+                    select.appendChild(option);
+                });
+            } catch (e) {
+                console.error('Failed to load buildings:', e);
+            }
+        }
+
+        // Load the image and room geometry for the selected building, then repaint the canvas.
+        async function loadSelectedBuilding() {
+            const building = document.getElementById('buildingSelect').value;
+            if (!building) {
+                currentBuilding = null;
+                backgroundImage = null;
+                roomBounds = {};
+                zoom = 1;
+                panX = 0;
+                panY = 0;
+                redraw();
+                return;
+            }
+
+            currentBuilding = building;
+
+            try {
+                const [imageRes, calibRes] = await Promise.all([
+                    fetch(`/api/building/${encodeURIComponent(building)}/image`),
+                    fetch(`/api/building/${encodeURIComponent(building)}/calibration`)
+                ]);
+
+                if (imageRes.ok) {
+                    const blob = await imageRes.blob();
+                    const url = URL.createObjectURL(blob);
+                    const img = new Image();
+                    img.onload = () => {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        backgroundImage = img;
+                        zoom = 1;
+                        panX = 0;
+                        panY = 0;
+                        redraw();
+                    };
+                    img.src = url;
+                }
+
+                if (calibRes.ok) {
+                    roomBounds = await calibRes.json();
+                }
+
+                await loadLegend();
+                redraw();
+            } catch (e) {
+                console.error('Failed to load building:', e);
+            }
+        }
+
+        // Open the room-specific controls and load its notes; selecting a room is not itself a save.
+        async function showColorPopover(roomId, x, y) {
+            if (!roomBounds[roomId]) return;
+
+            colorPopoverRoom = roomId;
+            const popover = document.getElementById('colorPopover');
+            document.getElementById('colorPopoverRoom').textContent = `Room ${roomId}`;
+
+            // Generate color buttons from legend
+            const container = document.getElementById('colorButtonsContainer');
+            container.innerHTML = !canEdit ? '<p>Read-only access</p>' : Object.entries(currentLegend).map(([key, item]) => {
+                if (key === 'modifier') return ''; // Skip modifier, it has its own button
+                return `<button class="color-btn" style="padding: 8px; font-size: 12px; background: #2d2d2d; color: #e8e8e8; border: 2px solid ${item.color}; text-align: left; margin-bottom: 6px;" onclick="setColorFromPopover('${key}')">${item.label}</button>`;
+            }).join('');
+
+            const rect = document.querySelector('.canvas-container').getBoundingClientRect();
+            popover.style.left = (x - rect.left) + 'px';
+            popover.style.top = (y - rect.top) + 'px';
+            popover.style.display = 'block';
+
+            updateLeftConnectedButton();
+            document.getElementById('notesInput').value = '';
+            document.getElementById('notesInput').parentElement.hidden = !canEdit;
+            await loadNotesForRoom(roomId);
+        }
+
+        function hideColorPopover() {
+            document.getElementById('colorPopover').style.display = 'none';
+            colorPopoverRoom = null;
+        }
+
+        // Build a proposed room map and wait for server confirmation before replacing displayed state.
+        async function saveRoomChange(changes) {
+            if (!canEdit || savingRoom || !currentBuilding || !colorPopoverRoom) return false;
+            const building = currentBuilding;
+            const roomId = colorPopoverRoom;
+            const originalBounds = roomBounds;
+        // Spread syntax copies the map and the changed room, leaving the displayed originals untouched.
+            const updatedBounds = {...roomBounds, [roomId]: {...roomBounds[roomId], ...changes}};
+            savingRoom = true;
+            try {
+                // Send only this room's changed status; geometry stays under admin control.
+                const response = await fetch(`/api/building/${encodeURIComponent(building)}/status`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({room_id: roomId, changes})
+                });
+                // A login redirect is not a successful save, even if its page returns 200.
+                if (!response.ok || response.redirected) throw new Error('Save rejected. Check your access or sign in again.');
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error || 'Save failed.');
+        // A slow response must not replace data loaded after the user switched buildings.
+                if (currentBuilding !== building || roomBounds !== originalBounds) return false;
+                roomBounds = updatedBounds;
+                redraw();
+                return true;
+            } catch (error) {
+                alert(error.message || 'Could not save. Please try again.');
+                return false;
+            } finally {
+                savingRoom = false;
+            }
+        }
+
+        // Close the picker only after a successful save, so failure remains visible to the user.
+        async function setColorFromPopover(color) {
+            if (await saveRoomChange({color})) hideColorPopover();
+        }
+
+        // Flip the optional striped modifier through the same checked save path as colors.
+        async function toggleLeftConnected() {
+            if (!canEdit || !colorPopoverRoom) return;
+            if (await saveRoomChange({leftConnected: !roomBounds[colorPopoverRoom].leftConnected})) {
+                updateLeftConnectedButton();
+            }
+        }
+
+        function updateLeftConnectedButton() {
+            const btn = document.getElementById('leftConnectedBtn');
+            if (!btn || !colorPopoverRoom || !roomBounds[colorPopoverRoom]) return;
+
+            const modifier = currentLegend.modifier;
+            if (!canEdit || !modifier || !modifier.enabled) {
+                btn.style.display = 'none';
+                return;
+            }
+
+            btn.style.display = 'block';
+            // Match the room control to this building's custom legend name.
+            btn.textContent = modifier.label || 'Modifier';
+            if (roomBounds[colorPopoverRoom].leftConnected) {
+                btn.style.background = '#0044dd';
+                btn.style.borderColor = '#00ffff';
+                btn.style.boxShadow = '0 0 12px rgba(0, 102, 255, 0.5)';
+            } else {
+                btn.style.background = '#0066ff';
+                btn.style.borderColor = '#0066ff';
+                btn.style.boxShadow = 'none';
+            }
+        }
+
+        // Ray casting counts boundary crossings: an odd count means the clicked point is inside.
+        function pointInPolygon(point, polygon) {
+            if (!polygon || polygon.length < 3) return false;
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i].x, yi = polygon[i].y;
+                const xj = polygon[j].x, yj = polygon[j].y;
+                const intersect = ((yi > point.y) !== (yj > point.y)) &&
+                    (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Convert from canvas coordinates to world coordinates
+            const worldX = (x - panX) / zoom;
+            const worldY = (y - panY) / zoom;
+
+            for (const [roomId, bounds] of Object.entries(roomBounds)) {
+                let isInside = false;
+
+                if (bounds.nodes) {
+                    isInside = pointInPolygon({ x: worldX, y: worldY }, bounds.nodes);
+                } else {
+                    isInside = worldX >= bounds.x && worldX <= bounds.x + bounds.w && worldY >= bounds.y && worldY <= bounds.y + bounds.h;
+                }
+
+                if (isInside) {
+                    showColorPopover(roomId, e.clientX, e.clientY);
+                    break;
+                }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && colorPopoverRoom) {
+                hideColorPopover();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            const popover = document.getElementById('colorPopover');
+            if (popover && colorPopoverRoom && !popover.contains(e.target) && e.target.id !== 'canvas') {
+                hideColorPopover();
+            }
+        });
+
+        function getColorValue(colorName) {
+            const colors = {
+                'white': '#ffffff',
+                'red': '#ff4757',
+                'yellow': '#ffc107',
+                'green': '#2ecc71'
+            };
+            return colors[colorName] || '#ffffff';
+        }
+
+        // Draw the stored corner points; status color and the optional modifier control the fill.
+        function drawPolygon(nodes, color, roomId, leftConnected) {
+            if (!nodes || nodes.length < 2) return;
+
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.4;
+            ctx.beginPath();
+            ctx.moveTo(nodes[0].x, nodes[0].y);
+            for (let i = 1; i < nodes.length; i++) {
+                ctx.lineTo(nodes[i].x, nodes[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            if (leftConnected) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(nodes[0].x, nodes[0].y);
+                for (let i = 1; i < nodes.length; i++) {
+                    ctx.lineTo(nodes[i].x, nodes[i].y);
+                }
+                ctx.closePath();
+                ctx.clip();
+
+                const minX = Math.min(...nodes.map(n => n.x));
+                const maxX = Math.max(...nodes.map(n => n.x));
+                const minY = Math.min(...nodes.map(n => n.y));
+                const maxY = Math.max(...nodes.map(n => n.y));
+
+                ctx.strokeStyle = '#0066ff';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([8, 8]);
+
+                const spacing = 12;
+                for (let i = minX - 200; i < maxX + 200; i += spacing) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, minY - 200);
+                    ctx.lineTo(i + maxY - minY + 400, maxY + 200);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(nodes[0].x, nodes[0].y);
+            for (let i = 1; i < nodes.length; i++) {
+                ctx.lineTo(nodes[i].x, nodes[i].y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            let centerX = 0, centerY = 0;
+            nodes.forEach(node => { centerX += node.x; centerY += node.y; });
+            centerX /= nodes.length;
+            centerY /= nodes.length;
+
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (roomId in roomBounds && roomBounds[roomId].showNumber !== false) {
+                ctx.fillText(roomId, centerX, centerY);
+            }
+        }
+
+        // Render the older rectangle format so existing floor plans remain usable.
+        function drawRotatedRect(x, y, w, h, angle, color, roomId, leftConnected) {
+            const centerX = x + w / 2;
+            const centerY = y + h / 2;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate((angle || 0) * Math.PI / 180);
+
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.4;
+            ctx.fillRect(-w / 2, -h / 2, w, h);
+            ctx.globalAlpha = 1;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (roomId in roomBounds && roomBounds[roomId].showNumber !== false) {
+                ctx.fillText(roomId, 0, 0);
+            }
+
+            ctx.restore();
+
+            if (leftConnected) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(centerX - w / 2, centerY - h / 2);
+                ctx.lineTo(centerX + w / 2, centerY - h / 2);
+                ctx.lineTo(centerX + w / 2, centerY + h / 2);
+                ctx.lineTo(centerX - w / 2, centerY + h / 2);
+                ctx.closePath();
+                ctx.clip();
+
+                ctx.strokeStyle = '#0066ff';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([8, 8]);
+
+                const spacing = 12;
+                for (let i = centerX - w - 100; i < centerX + w + 100; i += spacing) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, centerY - h - 100);
+                    ctx.lineTo(i + h + 200, centerY + h + 100);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Repaint the canvas from current state. Drawing pixels does not save anything to the server.
+        function redraw() {
+            if (!backgroundImage) {
+                canvas.width = 1000;
+                canvas.height = 600;
+                const gradient = ctx.createLinearGradient(0, 0, 1000, 600);
+                gradient.addColorStop(0, '#f0f0f0');
+                gradient.addColorStop(1, '#e0e0e0');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 1000, 600);
+                ctx.fillStyle = '#999';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Select a building to begin', 500, 300);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(zoom, zoom);
+
+            ctx.drawImage(backgroundImage, 0, 0);
+
+            for (const [roomId, bounds] of Object.entries(roomBounds)) {
+                const color = getColorValue(bounds.color || 'white');
+                if (bounds.nodes) {
+                    drawPolygon(bounds.nodes, color, roomId, bounds.leftConnected);
+                } else if (bounds.x !== undefined) {
+                    drawRotatedRect(bounds.x, bounds.y, bounds.w, bounds.h, bounds.angle || 0, color, roomId, bounds.leftConnected);
+                }
+            }
+
+            ctx.restore();
+        }
+
+        let currentLegend = {};
+
+        // Fetch this building's status definitions so colors and labels match its saved settings.
+        async function loadLegend() {
+            if (!currentBuilding) {
+                currentLegend = {};
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/legend`);
+                const data = await response.json();
+                // Convert ordered array to object preserving insertion order
+                if (Array.isArray(data)) {
+                    currentLegend = Object.fromEntries(data.map(e => [e.key, e]));
+                } else {
+                    currentLegend = data;
+                }
+                renderLegendDisplay();
+            } catch (e) {
+                console.error('Failed to load legend:', e);
+            }
+        }
+
+        function renderLegendDisplay() {
+            updateLeftConnectedButton();
+            const display = document.getElementById('legendDisplay');
+            if (!display) return;
+
+            display.innerHTML = Object.entries(currentLegend).map(([key, item]) => {
+                // Skip modifier if not enabled
+                if (key === 'modifier' && !item.enabled) return '';
+
+                const isModifier = key === 'modifier';
+                const style = isModifier ? 'margin-top: 8px; padding-top: 8px; border-top: 1px solid #444;' : '';
+                const colorStyle = isModifier
+                    ? `background: repeating-linear-gradient(45deg, ${item.color}, ${item.color} 10px, transparent 10px, transparent 20px);`
+                    : `background: ${item.color};`;
+
+                return `<div class="legend-item" style="${style}"><div class="legend-color" style="${colorStyle}"></div><span>${item.label}</span></div>`;
+            }).join('');
+        }
+
+        // Try optional local branding; the app still works when no logo file exists.
+        function loadLogo() {
+            const logoContainer = document.getElementById('logoContainer');
+            fetch('/api/logo')
+                .then(response => {
+                    if (response.ok) {
+                        logoContainer.innerHTML = `<img src="/api/logo?t=${Date.now()}" alt="MapProj Logo" style="max-height: 40px; max-width: 160px; object-fit: contain;">`;
+                    }
+                })
+                .catch(err => {
+                    console.log('Logo not available:', err);
+                });
+        }
+
+        function showWelcomeModal() {
+            const modal = document.getElementById('welcomeModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.style.visibility = 'visible';
+                console.log('Welcome modal shown');
+                const checkbox = document.getElementById('disableWelcomeCheckbox');
+                if (checkbox) {
+                    checkbox.checked = localStorage.getItem('disableWelcome') === 'true';
+                    checkbox.onchange = () => {
+                        if (checkbox.checked) {
+                            localStorage.setItem('disableWelcome', 'true');
+                            console.log('Welcome disabled');
+                        } else {
+                            localStorage.removeItem('disableWelcome');
+                            console.log('Welcome enabled');
+                        }
+                    };
+                }
+            } else {
+                console.log('Welcome modal not found');
+            }
+        }
+
+        function closeWelcomeModal() {
+            const modal = document.getElementById('welcomeModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.style.visibility = 'hidden';
+            }
+        }
+
+        // Use browser localStorage for this browser's welcome preference, not shared server data.
+        function checkWelcome() {
+            try {
+                const isDisabled = localStorage.getItem('disableWelcome') === 'true';
+                console.log('checkWelcome - disableWelcome:', isDisabled);
+                if (!isDisabled) {
+                    setTimeout(showWelcomeModal, 500);
+                }
+            } catch (e) {
+                console.log('Welcome modal error:', e);
+            }
+        }
+
+        // Start loading page data once the HTML elements are available.
+        function initializeApp() {
+            loadLogo();
+            loadBuildings();
+            loadLegend();
+            checkWelcome();
+            redraw();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                const response = await fetch('/logout', {method: 'POST'});
+                if (response.ok) window.location.href = '/login';
+                else alert('Could not log out. Reload and try again.');
+            }
+        }
+
+        // Notes functionality
+        // Fetch active notes and escape their author/text before building the display HTML.
+        async function loadNotesForRoom(roomId) {
+            if (!currentBuilding) return;
+
+            try {
+                const response = await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/notes`);
+                const allNotes = await response.json();
+                const roomNotes = allNotes[roomId] || [];
+
+                const notesDisplay = document.getElementById('notesDisplay');
+                if (roomNotes.length === 0) {
+                    notesDisplay.innerHTML = '<p style="color: #999;">No notes yet</p>';
+                    return;
+                }
+
+                notesDisplay.innerHTML = roomNotes.map((note, idx) =>
+                    `<div style="padding: 8px; margin-bottom: 6px; background: #1a1a2e; border-left: 3px solid #5a9f4a; border-radius: 3px;">
+                        <div style="color: #bbb; font-size: 11px;">${escapeHtml(note.author)} - ${new Date(note.timestamp).toLocaleDateString()}</div>
+                        <div style="color: #f0f0f0; margin-top: 4px;">${escapeHtml(note.text)}</div>
+                    </div>`
+                ).join('');
+            } catch (e) {
+                console.error('Failed to load notes:', e);
+            }
+        }
+
+        // Submit a new note for this room; the server separately checks whether this role may write.
+        async function submitNote() {
+            if (!canEdit || !colorPopoverRoom || !currentBuilding) return;
+
+            const text = document.getElementById('notesInput').value.trim();
+            if (!text) return;
+
+            try {
+                const response = await fetch(`/api/building/${encodeURIComponent(currentBuilding)}/notes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ room_id: colorPopoverRoom, text: text })
+                });
+
+                if (response.ok) {
+                    document.getElementById('notesInput').value = '';
+                    await loadNotesForRoom(colorPopoverRoom);
+                }
+            } catch (e) {
+                console.error('Failed to submit note:', e);
+            }
+        }
+    </script>
+</body>
+</html>

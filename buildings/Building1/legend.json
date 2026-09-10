@@ -1,0 +1,23 @@
+{
+  "red": {
+    "color": "#A53E2F",
+    "key": "red",
+    "label": "UnWaxed"
+  },
+  "yellow": {
+    "color": "#E8A830",
+    "key": "yellow",
+    "label": "Waxed"
+  },
+  "green": {
+    "color": "#5a9f4a",
+    "key": "green",
+    "label": "Cleaned"
+  },
+  "modifier": {
+    "color": "#0066ff",
+    "enabled": true,
+    "key": "modifier",
+    "label": "Carpet"
+  }
+}
