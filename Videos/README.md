@@ -1,5 +1,9 @@
 # MapProj video tutorials
 
+**[Watch the combined walkthrough on YouTube](https://youtu.be/-dAHxD8eRYA)** for convenient playback.
+
+## Original recordings
+
 Five short recordings walk through setting up MapProj and managing your building. Watch in order, or jump to the task you need. Total runtime: approximately **4 minutes 49 seconds**.
 
 1. **[Logo setup](mapproj%20-%201%20-%20Logo.mp4)** — 0:34. Set up the app's logo.
